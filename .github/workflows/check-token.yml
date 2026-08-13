@@ -16,5 +16,7 @@ jobs:
       - name: Instagram APIに疎通確認
         env:
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
-          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          # User IDは秘密ではない（公開アカウントの識別子）ので直書きする。
+          # Secretsに入れる物を減らすと、のみさんの手作業と取り違えが減る。
+          IG_USER_ID: "17841451592190940"
         run: python3 scripts/ig_api.py

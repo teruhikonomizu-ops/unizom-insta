@@ -24,8 +24,10 @@
 
 | 名前 | 中身 | 備考 |
 |---|---|---|
-| `IG_ACCESS_TOKEN` | Instagram長期アクセストークン | 60日で失効。`refresh_token()` で自動延長する |
-| `IG_USER_ID` | `17841451592190940` | @unizom.jp のInstagram User ID |
+| `IG_ACCESS_TOKEN` | Instagram長期アクセストークン | **これだけがSecret。** 60日で失効するので `refresh_token()` で自動延長する |
+
+`IG_USER_ID`（`17841451592190940`）は秘密情報ではない（公開アカウントの識別子）ので、
+Secretsには入れずワークフローに直書きしている。Secretsに入れる物を減らすほど取り違えが減るため。
 
 App ID は `2159294371304005`（Metaアプリ名 `unizom-sns-auto` / Instagramアプリ名 `unizom-sns-auto-IG`）。
 Facebookページは使わない（「Instagramログイン」方式）。自分のアカウントへの投稿なのでApp Reviewも不要。
