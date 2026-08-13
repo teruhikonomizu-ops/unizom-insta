@@ -11,6 +11,10 @@ on:
         description: "ネタのid（空なら承認済みの先頭）"
         required: false
         type: string
+      test_pack:
+        description: "動作確認用のパック名。入れると台帳を汚さず、コミットもしない"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -30,14 +34,23 @@ jobs:
       - name: 今週のパック名を決める
         id: name
         run: |
-          # 金曜の日付をパック名に使う（JSTで判定）
-          d=$(TZ=Asia/Tokyo date +%Y-%m-%d)
-          echo "pack=$d-weekly" >> "$GITHUB_OUTPUT"
-          echo "パック名: $d-weekly"
+          if [ -n "${{ inputs.test_pack }}" ]; then
+            echo "pack=${{ inputs.test_pack }}" >> "$GITHUB_OUTPUT"
+            echo "test=true" >> "$GITHUB_OUTPUT"
+            echo "動作確認: ${{ inputs.test_pack }}（台帳は汚さない・コミットもしない）"
+          else
+            d=$(TZ=Asia/Tokyo date +%Y-%m-%d)   # 金曜の日付をパック名に使う
+            echo "pack=$d-weekly" >> "$GITHUB_OUTPUT"
+            echo "test=false" >> "$GITHUB_OUTPUT"
+            echo "パック名: $d-weekly"
+          fi
 
       - name: その日のパックがもうあるなら何もしない
         id: guard
         run: |
+          if [ "${{ steps.name.outputs.test }}" = "true" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
           # 日付で始まるフォルダが1つでもあれば作らない。
           # 「今週はこれを出す」と人が先に用意したパック（例: 2026-08-21-bag-teaser）を
           # 週次が上書き・重複させないため。名前が -weekly でなくても効くようにする。
@@ -57,10 +70,11 @@ jobs:
         run: |
           opt=""
           [ -n "${{ inputs.topic }}" ] && opt="--topic ${{ inputs.topic }}"
+          [ "${{ steps.name.outputs.test }}" = "true" ] && opt="$opt --no-ledger"
           python3 scripts/build_weekly.py "${{ steps.name.outputs.pack }}" $opt
 
       - name: 出来たものをコミットする
-        if: steps.guard.outputs.skip == 'false'
+        if: steps.guard.outputs.skip == 'false' && steps.name.outputs.test == 'false'
         run: |
           git config user.name "unizom-insta bot"
           git config user.email "teruhiko.nomizu@gmail.com"

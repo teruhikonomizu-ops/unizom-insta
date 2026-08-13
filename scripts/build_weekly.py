@@ -117,6 +117,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("pack", help="作るパック名（例: 2026-08-29-sole-choice）")
     ap.add_argument("--topic", help="ネタのidを指定（既定は承認済みの先頭）")
+    ap.add_argument(
+        "--no-ledger",
+        action="store_true",
+        help="topics.json と stock/index.json を更新しない（動作確認用）",
+    )
     args = ap.parse_args()
 
     topics = load(TOPICS)
@@ -171,6 +176,11 @@ def main():
         )
 
     # --- 台帳を更新 ---
+    if args.no_ledger:
+        print("\n--no-ledger のため台帳は更新しない（動作確認用の実行）")
+        print(f"完成: docs/media/{args.pack}")
+        return
+
     today = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
     for t in topics["ネタ"]:
         if t["id"] == topic["id"]:
