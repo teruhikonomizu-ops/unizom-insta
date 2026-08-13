@@ -1,0 +1,13 @@
+2026-08-13
+# Instagram長期アクセストークンを発行（または更新）した日。
+# 有効期間は60日。check-token.yml が毎週この日付から残りを計算し、
+# 残り14日を切ったら「わざと失敗」してGitHubから失敗メールを飛ばす。
+#
+# トークンを取り直したら、この日付を必ず今日に書き換えてコミットすること。
+# 書き換えを忘れると、まだ有効なのに毎週警告が出続ける（狼少年になって見張りが死ぬ）。
+#
+# 取り直し方（5分）:
+#   1. https://developers.facebook.com/apps/2159294371304005/use_cases/customize/API-Setup/?use_case_enum=INSTAGRAM_BUSINESS&selected_tab=API-Setup&product_route=instagram-business
+#   2. 「2. アクセストークンを生成する」の unizom.jp の行 →「トークンを生成」
+#   3. GitHubの Settings → Secrets and variables → Actions → IG_ACCESS_TOKEN を更新
+#   4. この日付を今日に直してコミット

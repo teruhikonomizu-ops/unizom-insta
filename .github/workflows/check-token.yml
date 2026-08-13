@@ -20,3 +20,8 @@ jobs:
           # Secretsに入れる物を減らすと、のみさんの手作業と取り違えが減る。
           IG_USER_ID: "17841451592190940"
         run: python3 scripts/ig_api.py
+
+      # 疎通が通っていても60日で切れる。切れてから気づくと投稿できない日ができるので、
+      # 残り14日で「わざと失敗」させ、GitHubの失敗メールを鳴らす（radio-watchdogと同じ思想）。
+      - name: トークンの失効が近くないか
+        run: python3 scripts/check_expiry.py token_issued.txt
