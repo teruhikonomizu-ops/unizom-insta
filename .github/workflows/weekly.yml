@@ -1,0 +1,84 @@
+name: weekly-build
+
+# 毎週金曜の朝、投稿パックを1つ作る。**投稿はしない。**
+# のみさんが承認して publish を動かすまで、何も公開されない。
+on:
+  schedule:
+    - cron: "0 22 * * 4"   # 木曜22:00 UTC = 金曜07:00 JST
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "ネタのid（空なら承認済みの先頭）"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pillowを入れる
+        run: pip install --quiet Pillow
+
+      - name: Claude Code を入れる
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: 今週のパック名を決める
+        id: name
+        run: |
+          # 金曜の日付をパック名に使う（JSTで判定）
+          d=$(TZ=Asia/Tokyo date +%Y-%m-%d)
+          echo "pack=$d-weekly" >> "$GITHUB_OUTPUT"
+          echo "パック名: $d-weekly"
+
+      - name: その日のパックがもうあるなら何もしない
+        id: guard
+        run: |
+          # 日付で始まるフォルダが1つでもあれば作らない。
+          # 「今週はこれを出す」と人が先に用意したパック（例: 2026-08-21-bag-teaser）を
+          # 週次が上書き・重複させないため。名前が -weekly でなくても効くようにする。
+          d=$(TZ=Asia/Tokyo date +%Y-%m-%d)
+          existing=$(ls -d docs/media/${d}-* 2>/dev/null | head -1 || true)
+          if [ -n "$existing" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "その日のパックは用意済み（$existing）。二重に作らない。"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: パックを組み立てる
+        if: steps.guard.outputs.skip == 'false'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          opt=""
+          [ -n "${{ inputs.topic }}" ] && opt="--topic ${{ inputs.topic }}"
+          python3 scripts/build_weekly.py "${{ steps.name.outputs.pack }}" $opt
+
+      - name: 出来たものをコミットする
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          git config user.name "unizom-insta bot"
+          git config user.email "teruhiko.nomizu@gmail.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "変更なし"
+          else
+            git commit -m "今週の投稿パックを作った: ${{ steps.name.outputs.pack }}
+
+          自動生成。まだ投稿していない。のみさんの承認を待つ。"
+            git push
+          fi
+
+      - name: できたことを知らせる
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          echo "### 今週のインスタができました" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "パック: \`${{ steps.name.outputs.pack }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          cat "docs/media/${{ steps.name.outputs.pack }}/caption.txt" >> "$GITHUB_STEP_SUMMARY"
