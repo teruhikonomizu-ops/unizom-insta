@@ -1,4 +1,4 @@
-# 毎週金曜の朝、投稿パックを作って Chatwork で のみさんに知らせる。
+﻿# 毎週金曜の朝、投稿パックを作って Chatwork で のみさんに知らせる。
 #
 # タスク名: インスタ_金曜のお知らせ（毎週金曜 07:30）
 # PCは 07:00 に自動起動する（タスク スマホ遠隔_PC自動起動）ので、その後に動く。
@@ -49,11 +49,11 @@ try {
     }
     else {
       # 3) 出来たものを push（のみさんが見られるように）
+      # ⚠ コミットメッセージは1行にする。複数行にすると、バッククォート継続と
+      #    組み合わさってPowerShellのパーサが壊れる（2026-08-13に実際に起きた）。
+      $msg = "今週の投稿パックを作った: $today-weekly（自動生成。まだ投稿していない。承認待ち）"
       git add -A
-      git -c user.name="unizom-insta bot" -c user.email="teruhiko.nomizu@gmail.com" `
-        commit -q -m "今週の投稿パックを作った: $today-weekly
-
-自動生成。まだ投稿していない。のみさんの承認を待つ。" 2>&1 | Out-Null
+      git -c user.name="unizom-insta bot" -c user.email="teruhiko.nomizu@gmail.com" commit -q -m $msg 2>&1 | Out-Null
       git push -q 2>&1 | Out-Null
       Note "pushした"
     }
