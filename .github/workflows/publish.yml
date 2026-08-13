@@ -14,6 +14,11 @@ on:
         required: true
         default: true
         type: boolean
+      reel:
+        description: "動画をリール(9:16向け)として出す。既定OFF＝フィード動画(4:5をそのまま出せる)"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   publish:
@@ -42,8 +47,7 @@ jobs:
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           IG_USER_ID: "17841451592190940"
         run: |
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
-            python3 scripts/publish_post.py "${{ inputs.pack }}" --dry-run
-          else
-            python3 scripts/publish_post.py "${{ inputs.pack }}"
-          fi
+          opts=""
+          [ "${{ inputs.dry_run }}" = "true" ] && opts="$opts --dry-run"
+          [ "${{ inputs.reel }}" = "true" ] && opts="$opts --reel"
+          python3 scripts/publish_post.py "${{ inputs.pack }}" $opts
