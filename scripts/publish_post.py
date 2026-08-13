@@ -37,7 +37,8 @@ def load_pack(pack):
     caption_file = d / "caption.txt"
     if not caption_file.is_file():
         raise SystemExit(f"caption.txt が無い: {caption_file}")
-    caption = caption_file.read_text(encoding="utf-8").strip()
+    # utf-8-sig: メモ帳などで編集されてBOMが付いても先頭に化けた文字が残らないようにする
+    caption = caption_file.read_text(encoding="utf-8-sig").strip()
     if not caption:
         raise SystemExit("caption.txt が空")
     if len(caption) > 2200:
