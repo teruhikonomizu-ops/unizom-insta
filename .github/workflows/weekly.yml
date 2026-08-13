@@ -2,9 +2,15 @@ name: weekly-build
 
 # 毎週金曜の朝、投稿パックを1つ作る。**投稿はしない。**
 # のみさんが承認して publish を動かすまで、何も公開されない。
+# 🔴 2026-08-13: 定時実行は止めた。パック作りは**このPC**でやる。
+#   理由: クラウドで書かせるには CLAUDE_CODE_OAUTH_TOKEN が要るが、
+#   入れ直しても 401（OAuth access token is invalid）で通らなかった。
+#   PCのClaude Codeは認証済みで同じコードが通しテストに成功しているため、
+#   PC側（タスク インスタ_金曜のお知らせ / scripts\金曜のお知らせ.ps1）へ寄せた。
+#   ここは手で動かす時のために残してある。トークンが直ったら下のcronを戻せばよい。
 on:
-  schedule:
-    - cron: "0 22 * * 4"   # 木曜22:00 UTC = 金曜07:00 JST
+  # schedule:
+  #   - cron: "0 22 * * 4"   # 木曜22:00 UTC = 金曜07:00 JST
   workflow_dispatch:
     inputs:
       topic:
