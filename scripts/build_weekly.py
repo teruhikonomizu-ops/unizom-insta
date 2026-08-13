@@ -80,7 +80,10 @@ def run_claude(topic):
             input=body, capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
         if r.returncode != 0:
-            print(f"claudeの呼び出しが失敗（{attempt}回目）: {r.stderr[-500:]}", file=sys.stderr)
+            # 何が起きたか分からないと直せない。終了コード・標準出力・標準エラーを全部出す。
+            print(f"claudeの呼び出しが失敗（{attempt}回目）exit={r.returncode}", file=sys.stderr)
+            print(f"--- stdout ---\n{r.stdout[-1500:]}", file=sys.stderr)
+            print(f"--- stderr ---\n{r.stderr[-1500:]}", file=sys.stderr)
             continue
         out = r.stdout.strip()
         # ```json ... ``` に包まれていても拾えるようにする
