@@ -72,24 +72,22 @@ def url_for(pack, path):
     return f"{PAGES_BASE}/{pack}/{path.name}"
 
 
-def build_container(pack, caption, media, as_reel=False):
+def build_container(pack, caption, media):
     """メディアの構成に応じてコンテナを作り、公開できるIDを返す。"""
     first = media[0]
 
     if first.suffix.lower() in VIDEO_EXTS:
-        # 動画は2種類ある。取り違えると見え方が変わるので明示的に選ぶ。
-        #   VIDEO … フィード動画。4:5(1080x1350)などをそのまま出せる
-        #   REELS … リール。**9:16が要件**で、4:5を入れると上下に余白が付く
-        if as_reel:
-            print(f"リール(REELS)として作成: {first.name}")
-            cid = ig_api.create_container(
-                media_type="REELS", video_url=url_for(pack, first), caption=caption
-            )
-        else:
-            print(f"フィード動画(VIDEO)として作成: {first.name}")
-            cid = ig_api.create_container(
-                media_type="VIDEO", video_url=url_for(pack, first), caption=caption
-            )
+        # 🔴 動画は REELS しか選べない（2026-08-13にAPIで実測）。
+        # media_type=VIDEO を投げると Meta がこう返す:
+        #   「The VIDEO value for media_type is deprecated.
+        #     Use the REELS media type to publish a video to your Instagram feed.」
+        # 公式ドキュメントのページには VIDEO が残っているが**古い**。APIの返答が正。
+        # → 「フィード動画として出す」という選択肢は存在しない。作り直さないこと。
+        # → リールは9:16が前提なので、動画は 1080x1920 で用意する。
+        print(f"リールとして作成: {first.name}")
+        cid = ig_api.create_container(
+            media_type="REELS", video_url=url_for(pack, first), caption=caption
+        )
         ig_api.wait_ready(cid)
         return cid
 
@@ -121,11 +119,6 @@ def main():
         action="store_true",
         help="コンテナ作成までで止める（投稿しない）",
     )
-    ap.add_argument(
-        "--reel",
-        action="store_true",
-        help="動画をリール(9:16向け)として出す。既定はフィード動画(4:5などをそのまま出せる)",
-    )
     args = ap.parse_args()
 
     caption, media = load_pack(args.pack)
@@ -136,7 +129,7 @@ def main():
     used = ig_api.publish_limit()
     print(f"直近24時間の投稿数: {used} / 100")
 
-    cid = build_container(args.pack, caption, media, as_reel=args.reel)
+    cid = build_container(args.pack, caption, media)
     print(f"コンテナ作成OK: {cid}")
 
     if args.dry_run:

@@ -14,11 +14,8 @@ on:
         required: true
         default: true
         type: boolean
-      reel:
-        description: "動画をリール(9:16向け)として出す。既定OFF＝フィード動画(4:5をそのまま出せる)"
-        required: false
-        default: false
-        type: boolean
+# ⚠ 動画の種別を選ぶ入力は置かない。Metaは media_type=VIDEO を廃止し、
+#   動画はすべてリール(REELS)扱いになったため（2026-08-13にAPIの返答で確認）。
 
 jobs:
   publish:
@@ -49,5 +46,4 @@ jobs:
         run: |
           opts=""
           [ "${{ inputs.dry_run }}" = "true" ] && opts="$opts --dry-run"
-          [ "${{ inputs.reel }}" = "true" ] && opts="$opts --reel"
           python3 scripts/publish_post.py "${{ inputs.pack }}" $opts
