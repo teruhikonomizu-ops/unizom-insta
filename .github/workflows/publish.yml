@@ -1,0 +1,49 @@
+name: publish
+
+# 投稿は「のみさんが承認した時だけ」動く（2026-08-13 のみさん決定）。
+# 定時のcronは置かない。手で起動するか、スマホのClaudeから起動する。
+on:
+  workflow_dispatch:
+    inputs:
+      pack:
+        description: "投稿パック名（docs/media/ 配下のフォルダ名）"
+        required: true
+        type: string
+      dry_run:
+        description: "投稿せずコンテナ作成までで止める（動作確認用）"
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 素材が公開URLから取れるか先に確かめる
+        run: |
+          base="https://teruhikonomizu-ops.github.io/unizom-insta/media/${{ inputs.pack }}"
+          fail=0
+          for f in docs/media/${{ inputs.pack }}/*.jpg docs/media/${{ inputs.pack }}/*.mp4; do
+            [ -e "$f" ] || continue
+            url="$base/$(basename "$f")"
+            code=$(curl -s -o /dev/null -w "%{http_code}" -L "$url")
+            echo "$code  $url"
+            [ "$code" = "200" ] || fail=1
+          done
+          if [ "$fail" = "1" ]; then
+            echo "::error::公開URLから取れない素材がある。GitHub Pagesのビルド完了を待つか、ファイル名を確認する"
+            exit 1
+          fi
+
+      - name: 投稿
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: "17841451592190940"
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            python3 scripts/publish_post.py "${{ inputs.pack }}" --dry-run
+          else
+            python3 scripts/publish_post.py "${{ inputs.pack }}"
+          fi
