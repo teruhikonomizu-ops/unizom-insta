@@ -1,0 +1,57 @@
+{
+  "_メモ": "2026-08-24 防水リュック 発売告知（臨時）。src は _元画像/ から。overlay_cards.py で 1080x1350 JPEG に書き出す。",
+  "cards": [
+    {
+      "src": "_元画像/src1_rain.png",
+      "out": "1-final.jpg",
+      "kicker": "本日発売",
+      "lines": [
+        "防水リュック、",
+        "発売しました。"
+      ],
+      "subs": [
+        "止水ファスナー × ロールトップ／マットブラック"
+      ],
+      "line_size": 100,
+      "kicker_size": 42,
+      "sub_size": 38,
+      "scrim": 0.86,
+      "scrim_height": 0.56
+    },
+    {
+      "src": "_元画像/src2_bike.png",
+      "out": "2-final.jpg",
+      "kicker": "雨の日の自転車通勤に",
+      "lines": [
+        "急な雨でも、",
+        "水が入りにくい。"
+      ],
+      "subs": [
+        "正面は止水ファスナー、上部は折り返し",
+        "※完全防水ではありません"
+      ],
+      "line_size": 96,
+      "kicker_size": 42,
+      "sub_size": 36,
+      "scrim": 0.88,
+      "scrim_height": 0.6
+    },
+    {
+      "src": "_元画像/src3_interior.jpg",
+      "out": "3-final.jpg",
+      "kicker": "容量 20〜30L",
+      "lines": [
+        "15.6インチPCも、",
+        "1〜2泊の荷物も。"
+      ],
+      "subs": [
+        "折り返しの深さで容量が変わる／本体 約800g"
+      ],
+      "line_size": 92,
+      "kicker_size": 42,
+      "sub_size": 38,
+      "scrim": 0.86,
+      "scrim_height": 0.58
+    }
+  ]
+}
