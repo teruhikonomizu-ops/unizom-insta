@@ -1,0 +1,57 @@
+{
+  "_メモ": "2026-08-28 金曜の定期投稿。インソール『まもなく発売』の予告＋防水リュック『発売中』の再告知。src は _元画像/ から。overlay_cards.py で 1080x1350 JPEG に書き出す。",
+  "cards": [
+    {
+      "src": "_元画像/src1_boot.png",
+      "out": "1-final.jpg",
+      "kicker": "まもなく発売",
+      "lines": [
+        "長靴のための、",
+        "インソール。"
+      ],
+      "subs": [
+        "長靴・ウェーダー専用設計／S・M・Lの3サイズ"
+      ],
+      "line_size": 100,
+      "kicker_size": 42,
+      "sub_size": 38,
+      "scrim": 0.86,
+      "scrim_height": 0.56
+    },
+    {
+      "src": "_元画像/src2_hero.png",
+      "out": "2-final.jpg",
+      "kicker": "専用設計のわけ",
+      "lines": [
+        "すき間を、",
+        "厚みで埋める。"
+      ],
+      "subs": [
+        "極厚つま先 約7mm ／ かかと 約8mm の高反発EVA"
+      ],
+      "line_size": 100,
+      "kicker_size": 42,
+      "sub_size": 36,
+      "scrim": 0.88,
+      "scrim_height": 0.6
+    },
+    {
+      "src": "_元画像/src3_bag.png",
+      "out": "3-final.jpg",
+      "kicker": "こちらは発売中",
+      "lines": [
+        "防水リュック、",
+        "販売しています。"
+      ],
+      "subs": [
+        "止水ファスナー × ロールトップ／約20〜30L",
+        "※完全防水ではありません"
+      ],
+      "line_size": 92,
+      "kicker_size": 42,
+      "sub_size": 36,
+      "scrim": 0.86,
+      "scrim_height": 0.58
+    }
+  ]
+}
