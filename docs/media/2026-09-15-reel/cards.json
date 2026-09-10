@@ -1,0 +1,78 @@
+{
+  "format": "reel",
+  "cards": [
+    {
+      "src": "raw/1.jpg",
+      "out": "cards/1.jpg",
+      "kicker": "新商品",
+      "lines": [
+        "防水リュック"
+      ],
+      "subs": [
+        "おかげさまで好評"
+      ],
+      "line_size": 116
+    },
+    {
+      "src": "raw/2.mp4",
+      "out": "cards/2.png",
+      "kicker": "正面",
+      "lines": [
+        "止水ファスナー"
+      ],
+      "subs": [
+        "雨や水が入りにくい"
+      ],
+      "line_size": 96
+    },
+    {
+      "src": "raw/3.mp4",
+      "out": "cards/3.png",
+      "kicker": "収納力",
+      "lines": [
+        "PCもA4も入る"
+      ],
+      "subs": [
+        "A4書類も収納",
+        "20L→約30Lに"
+      ],
+      "line_size": 96
+    },
+    {
+      "src": "raw/4.mp4",
+      "out": "cards/4.png",
+      "kicker": "背負い心地",
+      "lines": [
+        "エアメッシュ背面"
+      ],
+      "subs": [
+        "肩パッド・サイド固定"
+      ],
+      "line_size": 96
+    },
+    {
+      "src": "raw/5.mp4",
+      "out": "cards/5.png",
+      "kicker": "楽天で発売中",
+      "lines": [
+        "専用インソール"
+      ],
+      "subs": [
+        "長靴・ウェーダー用"
+      ],
+      "line_size": 96
+    },
+    {
+      "src": "raw/6.mp4",
+      "out": "cards/6.png",
+      "kicker": "続き",
+      "lines": [
+        "プロフィールへ"
+      ],
+      "subs": [
+        "Amazon・楽天で販売中"
+      ],
+      "line_size": 96
+    }
+  ]
+}

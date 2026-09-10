@@ -120,14 +120,35 @@ def run_claude(topic, reel=False):
 
 
 def pick_stock(stock, scene, used_ids):
-    """場面が合う素材を、使った回数の少ない順に。同じ回で重複させない。"""
-    cands = [s for s in stock["素材"] if s["場面"] == scene and s["id"] not in used_ids]
+    """場面が合う風景素材を、使った回数の少ない順に。同じ回で重複させない。"""
+    scenery = [s for s in stock["素材"] if s.get("種類", "写真") == "写真"]
+    cands = [s for s in scenery if s["場面"] == scene and s["id"] not in used_ids]
     if not cands:
         # 場面が合うものが尽きたら、まだ使っていない何かで代用する（止めない）
-        cands = [s for s in stock["素材"] if s["id"] not in used_ids]
+        cands = [s for s in scenery if s["id"] not in used_ids]
     if not cands:
         raise SystemExit("素材が足りない。stock を補充すること")
     cands.sort(key=lambda s: (s["使った回数"], s["id"]))
+    return cands[0]
+
+
+def pick_product(stock, products, kind, used_ids, text=""):
+    """商品の素材（種類=商品写真／商品動画）を選ぶ。無ければ None。
+
+    2026-09-11 のみさん指示「風景だけ流れて商品が1個も出てない。商品もちゃんと出して」。
+    ネタに「商品」が書いてあれば、表紙と偶数枚目は商品の写真・動画カットにする。
+    札の文言（text）に合う素材を優先する（「止水ファスナー」の札にはファスナーの寄り、など）。
+    """
+    cands = [s for s in stock["素材"]
+             if s.get("種類") == kind and s.get("商品") in products and s["id"] not in used_ids]
+    if not cands:
+        return None
+
+    def score(s):
+        hit = sum(1 for k in s.get("キーワード", []) if k and k in text)
+        return (-hit, 0 if s.get("主役") else 1, s["使った回数"], s["id"])
+
+    cands.sort(key=score)
     return cands[0]
 
 
@@ -160,21 +181,46 @@ def main():
     (pack_dir / "caption.txt").write_text(written["caption"].strip() + "\n", encoding="utf-8")
 
     # --- 素材を選んで並べる ---
+    # ネタに「商品」があれば、表紙＝商品写真、偶数枚目＝商品の動画カット（リール）か商品写真、
+    # 奇数枚目＝風景（Claudeが scene に「商品」と書いた枚も商品写真）。締めの1枚は風景でよい。
+    products = topic.get("商品") or []
+    if isinstance(products, str):
+        products = [products]
     used, cards = [], []
+    n = len(cards_spec)
     for i, c in enumerate(cards_spec, start=1):
         scene = c.get("scene") or (topic["素材の場面"][0] if topic["素材の場面"] else "")
-        chosen = pick_stock(stock, scene, used)
+        chosen = None
+        # 札の文言（素材選びの手がかり）と、札ごとの商品指定（例: インソールの札には insole）
+        text = c.get("kicker", "") + " ".join(c.get("lines", [])) + " ".join(c.get("subs", []))
+        card_products = [c["product"]] if c.get("product") in products else products
+        if products:
+            want_product = (i == 1) or (i % 2 == 0 and i != n) or scene == "商品" or c.get("product")
+            if want_product:
+                if args.reel and i != 1:
+                    chosen = pick_product(stock, card_products, "商品動画", used, text)
+                if chosen is None:
+                    chosen = pick_product(stock, card_products, "商品写真", used, text)
+        if chosen is None:
+            if scene == "商品":
+                scene = topic["素材の場面"][0] if topic["素材の場面"] else ""
+            chosen = pick_stock(stock, scene, used)
         used.append(chosen["id"])
-        shutil.copy(REPO / chosen["ファイル"], raw_dir / f"{i}.jpg")
-        cards.append({
-            "src": f"raw/{i}.jpg",
-            "out": f"cards/{i}.jpg" if args.reel else f"{i}.jpg",
+        ext = pathlib.Path(chosen["ファイル"]).suffix.lower()
+        is_video = ext in (".mp4", ".mov")
+        shutil.copy(REPO / chosen["ファイル"], raw_dir / f"{i}{ext}")
+        card = {
+            "src": f"raw/{i}{ext}",
+            "out": (f"cards/{i}.png" if is_video else f"cards/{i}.jpg") if args.reel else f"{i}.jpg",
             "kicker": c.get("kicker", ""),
             "lines": c.get("lines", []),
             "subs": c.get("subs", []),
             "line_size": 96 if len(c.get("lines", [""])[0]) > 6 else 116,
-        })
-        print(f"  {i}枚目: {scene} -> {chosen['id']}")
+        }
+        if chosen.get("開始秒"):
+            card["start"] = chosen["開始秒"]
+        cards.append(card)
+        print(f"  {i}枚目: {scene} -> {chosen['id']}" + (" [商品]" if chosen.get("種類", "").startswith("商品") else ""))
     save(pack_dir / "cards.json", {"format": "reel" if args.reel else "feed", "cards": cards})
 
     # --- 文字を載せる ---

@@ -48,9 +48,34 @@ def hexc(h):
 
 
 def fit(im):
-    """元画像を4:5にセンタークロップして1080x1350にする。"""
+    """元画像をキャンバスに収める。
+
+    風景写真（縦横比が近い）はセンタークロップ。
+    商品写真（正方形・16:9 など縦横比が大きく違う）は切ると商品が欠けるので、
+    ぼかして暗くした同じ写真を背景に敷き、その上に元の写真を欠けないように置く（2026-09-11追加）。
+    リールでは文字が下に来るので、写真はやや上寄せにする。
+    """
     target = W / H
     w, h = im.size
+    if (w / h) / target > 1.25:            # キャンバスよりずっと横長 → 欠けないように収める
+        from PIL import ImageFilter, ImageEnhance
+        bg = im.copy()
+        # 背景: 全面を覆うまで拡大してクロップ → ぼかし → 暗く
+        if w / h > target:
+            bh = h; bw = int(h * target)
+        else:
+            bw = w; bh = int(w / target)
+        bg = bg.crop(((w - bw) // 2, (h - bh) // 2, (w - bw) // 2 + bw, (h - bh) // 2 + bh))
+        bg = bg.resize((W, H), Image.LANCZOS).filter(ImageFilter.GaussianBlur(40))
+        bg = ImageEnhance.Brightness(bg).enhance(0.45)
+        # 前景: 横幅いっぱいに縮めて、上寄せに置く（下は文字の場所）
+        fw = W - (RIGHT_SAFE // 2 if RIGHT_SAFE else 0)
+        fh = int(h * fw / w)
+        fg = im.resize((fw, fh), Image.LANCZOS)
+        top_room = H - BOTTOM_PAD - 260          # 文字ブロックの上端のだいたいの位置
+        y = max(60, (top_room - fh) // 2 + 40)
+        bg.paste(fg, (0, y))
+        return bg
     if w / h > target:                       # 横に広い → 左右を削る
         new_w = int(h * target)
         box = ((w - new_w) // 2, 0, (w - new_w) // 2 + new_w, h)
@@ -68,6 +93,12 @@ def add_scrim(im, strength, height_ratio):
         # 下端が最も濃い。二乗で効かせて上側の変化をなだらかにする。
         grad.putpixel((0, y), int(255 * strength * (y / band) ** 2))
     grad = grad.resize((W, band))
+    if im.mode == "RGBA":
+        veil = Image.new("RGBA", (W, band), (0, 0, 0, 255))
+        layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        veil.putalpha(grad)
+        layer.paste(veil, (0, H - band))
+        return Image.alpha_composite(im, layer)
     veil = Image.new("RGB", (W, band), (0, 0, 0))
     im.paste(veil, (0, H - band), grad)
     return im
@@ -143,10 +174,18 @@ def text_block(draw, card, fonts):
     return sized, total
 
 
+VIDEO_EXTS = (".mp4", ".mov")
+
+
 def render(post_dir, card):
     src = os.path.join(post_dir, card["src"])
-    with Image.open(src) as raw:
-        im = fit(raw.convert("RGB"))
+    is_video = src.lower().endswith(VIDEO_EXTS)
+    if is_video:
+        # 動画は ffmpeg 側で敷く。ここでは「暗いグラデーション＋文字」だけの透明レイヤーを作る
+        im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    else:
+        with Image.open(src) as raw:
+            im = fit(raw.convert("RGB"))
 
     im = add_scrim(im, card.get("scrim", 0.82), card.get("scrim_height", 0.58))
     draw = ImageDraw.Draw(im)
@@ -188,7 +227,10 @@ def render(post_dir, card):
 
     out = os.path.join(post_dir, card["out"])
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
-    im.save(out, "JPEG", quality=92, optimize=True, progressive=True)
+    if is_video:
+        im.save(out, "PNG")                       # 透明レイヤー（cards/N.png）
+    else:
+        im.save(out, "JPEG", quality=92, optimize=True, progressive=True)
     print(f"saved {card['out']}  ({os.path.getsize(out) // 1024} KB)")
 
 

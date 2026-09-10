@@ -9,6 +9,7 @@
 使い方: python3 scripts/build_reel.py <パックのフォルダ>
   そのフォルダの cards.json（"format": "reel"）を読み、cards/1.jpg 2.jpg … を順に
   1080x1920・30fps・H.264/AAC の 1.mp4 にする。publish_post.py はこれをリールとして投稿する。
+  src が動画（商品の動画カット）のカードは、cards/N.png（透明の文字レイヤー）を重ねて使う。
 
 音:
   stock/bgm/ に .mp3 か .m4a があれば、パック名から決まる1本をBGMにして末尾でフェードアウトする。
@@ -60,6 +61,31 @@ def seconds_for(card, is_cover):
         return 3.2
     chars = sum(len(x) for x in card.get("lines", [])) + sum(len(x) for x in card.get("subs", []))
     return max(3.0, min(6.0, 2.6 + 0.07 * chars))
+
+
+def video_segment(exe, clip, layer, out, sec, start=0.0):
+    """商品の動画カットを1枚分にする（2026-09-11追加）。
+
+    16:9 のカットは、ぼかして暗くした同じ映像を背景に敷き、その上に元の映像を欠けないように置く。
+    9:16 のカットはそのまま全面に。最後に文字の透明レイヤー（cards/N.png）を重ねる。音は使わない。
+    """
+    frames = int(round(sec * FPS))
+    vf = (
+        f"[0:v]trim=start={start}:duration={sec},setpts=PTS-STARTPTS,split=2[a][b];"
+        f"[a]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+        f"boxblur=30:5,eq=brightness=-0.25[bg];"
+        f"[b]scale={W}:-2:force_original_aspect_ratio=decrease[fg];"
+        f"[bg][fg]overlay=(W-w)/2:'if(lt(h,{H}),{int(H * 0.36)}-h/2,0)'[base];"
+        f"[base][1:v]overlay=0:0,"
+        f"fade=t=in:st=0:d={FADE},fade=t=out:st={max(0.0, sec - FADE):.2f}:d={FADE},"
+        f"fps={FPS},format=yuv420p[v]"
+    )
+    subprocess.run(
+        [exe, "-y", "-loglevel", "error", "-i", str(clip), "-i", str(layer),
+         "-filter_complex", vf, "-map", "[v]", "-t", f"{sec:.2f}", "-r", str(FPS),
+         "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-an", str(out)],
+        check=True,
+    )
 
 
 def segment(exe, img, out, sec, zoom_in):
@@ -114,12 +140,20 @@ def main(pack_dir):
         img = pack / card["out"]
         if not img.is_file():
             raise SystemExit(f"カード画像が無い: {img}")
-        sec = seconds_for(card, is_cover=(i == 0))
         seg = work / f"seg{i + 1}.mp4"
-        segment(exe, img, seg, sec, zoom_in=(i % 2 == 0))
+        src = pack / card["src"]
+        if src.suffix.lower() in (".mp4", ".mov"):
+            # 動画カット: 長さはカットの尺に合わせる（最大6秒）
+            clip_len = ffprobe_duration(src) - float(card.get("start", 0))
+            sec = min(max(2.5, clip_len - 0.1), seconds_for(card, is_cover=(i == 0)) + 1.0, 6.0)
+            video_segment(exe, src, img, seg, sec, start=float(card.get("start", 0)))
+            print(f"  {i + 1}枚目: {sec:.1f}秒 (動画 {src.name})")
+        else:
+            sec = seconds_for(card, is_cover=(i == 0))
+            segment(exe, img, seg, sec, zoom_in=(i % 2 == 0))
+            print(f"  {i + 1}枚目: {sec:.1f}秒 ({'寄る' if i % 2 == 0 else '引く'})")
         parts.append(seg)
         total += sec
-        print(f"  {i + 1}枚目: {sec:.1f}秒 ({'寄る' if i % 2 == 0 else '引く'})")
 
     if not 5 <= total <= 90:
         raise SystemExit(f"長さが範囲外: {total:.1f}秒（5〜90秒）")
