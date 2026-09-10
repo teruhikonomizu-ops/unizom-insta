@@ -54,17 +54,49 @@ def add_scrim(im, strength, height_ratio):
     return im
 
 
+NO_LINE_START = "、。，．・ー〜」』）】ぁぃぅぇぉっゃゅょ"  # 行頭に来ると見苦しい文字
+
+
+def _fits(draw, text, font, limit):
+    return draw.textlength(text, font=font) <= limit
+
+
 def wrap(draw, text, font, limit):
-    """幅を測って折り返す。日本語は単語で切れないので1文字ずつ詰める。"""
+    """幅を測って折り返す。日本語は単語で切れないので1文字ずつ詰める。
+
+    2026-09-11: 末尾が1〜2文字だけ次の行に落ちる（例「鮎・磯釣りはもちろ／ん」）のを防ぐ。
+    折り返しが起きた時は、各行がなるべく同じ長さになるよう均等に割り直す
+    （行頭が「、」「ー」などにならないよう1文字ずらす）。
+    """
     lines, cur = [], ""
     for ch in text:
-        if draw.textlength(cur + ch, font=font) > limit and cur:
+        if not _fits(draw, cur + ch, font, limit) and cur:
             lines.append(cur)
             cur = ch
         else:
             cur += ch
     if cur:
         lines.append(cur)
+    if len(lines) < 2:
+        return lines
+
+    # 均等割り: 行数はそのまま、1行あたりの文字数を揃える
+    n = len(lines)
+    per = -(-len(text) // n)  # 切り上げ
+    out, pos = [], 0
+    for i in range(n):
+        end = len(text) if i == n - 1 else pos + per
+        # 次の行頭が禁則文字なら、その1文字を今の行に含める
+        while end < len(text) and text[end] in NO_LINE_START:
+            end += 1
+        out.append(text[pos:end])
+        pos = end
+        if pos >= len(text):
+            break
+    out = [x for x in out if x]
+    # 均等割りの結果が幅に収まらない時だけ元の詰め方に戻す
+    if all(_fits(draw, x, font, limit) for x in out):
+        return out
     return lines
 
 
