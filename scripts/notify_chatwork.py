@@ -1,4 +1,4 @@
-"""金曜の朝、その週の投稿パックができたことを Chatwork で のみさんに知らせる。
+"""投稿パックができた朝（火曜=リール／金曜=カルーセル）、Chatwork で のみさんに知らせる。
 
 このPCで動く（クラウドではない）。理由：
   Chatworkのトークンは執事zetaが Google Secret Manager 経由で
@@ -102,7 +102,7 @@ def dict_drift():
 
 
 def this_week_pack():
-    """今日（金曜）の日付のパックを探す。"""
+    """今日の日付のパックを探す（火曜=…-reel／金曜=…-weekly）。"""
     today = datetime.datetime.now().strftime("%Y-%m-%d")
     for d in sorted((REPO / "docs" / "media").iterdir()):
         if d.is_dir() and d.name.startswith(today):

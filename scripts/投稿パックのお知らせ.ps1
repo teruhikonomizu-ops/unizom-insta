@@ -1,7 +1,10 @@
-﻿# 毎週金曜の朝、投稿パックを作って Chatwork で のみさんに知らせる。
+﻿# 投稿パックを作って Chatwork で のみさんに知らせる（週2本・2026-09-11から）。
 #
-# タスク名: インスタ_金曜のお知らせ（毎週金曜 07:30）
+#   火曜 07:30  タスク インスタ_火曜のリール      → -Reel 付き → <日付>-reel   （動画1本）
+#   金曜 07:30  タスク インスタ_金曜のお知らせ    → 引数なし   → <日付>-weekly （カルーセル/写真）
+#
 # PCは 07:00 に自動起動する（タスク スマホ遠隔_PC自動起動）ので、その後に動く。
+# ※旧名 金曜のお知らせ.ps1（2026-09-11に改名。タスクの登録先も直した）
 #
 # 🔴 なぜクラウドでなくPCで作るのか（2026-08-13の判断）
 #   クラウドで書かせるには CLAUDE_CODE_OAUTH_TOKEN が要るが、
@@ -13,6 +16,7 @@
 # 🔴 Claude Code の権限バイパス（--dangerously-skip-permissions）は使わない。
 #   build_weekly.py は claude を「標準入力→標準出力」の文章書きとしてだけ呼び、
 #   ファイル操作やコマンド実行をさせないため。
+param([switch]$Reel)
 $ErrorActionPreference = "Stop"
 $repo = Join-Path $env:USERPROFILE "repos\unizom-insta"
 $log  = Join-Path $repo "_お知らせログ.txt"
@@ -35,14 +39,16 @@ try {
   # 2) その日のパックが既にあるなら作らない
   #    人が先に用意した回（例: 2026-08-21-bag-teaser）を週次が上書きしないため
   $today = Get-Date -Format "yyyy-MM-dd"
+  $suffix = "weekly"; $extra = @()
+  if ($Reel) { $suffix = "reel"; $extra = @("--reel") }
   $exists = Get-ChildItem (Join-Path $repo "docs\media") -Directory -ErrorAction SilentlyContinue |
             Where-Object { $_.Name -like "$today-*" } | Select-Object -First 1
   if ($exists) {
     Note "その日のパックは用意済み($($exists.Name))。作らずに通知だけする。"
   }
   else {
-    Note "パックを作る: $today-weekly"
-    $out = & python (Join-Path $repo "scripts\build_weekly.py") "$today-weekly" 2>&1
+    Note "パックを作る: $today-$suffix"
+    $out = & python (Join-Path $repo "scripts\build_weekly.py") "$today-$suffix" @extra 2>&1
     $out | ForEach-Object { Note ("  " + $_) }
     if ($LASTEXITCODE -ne 0) {
       Note "パック作成に失敗した。通知だけ送って終わる（黙って消えないように）。"
@@ -51,7 +57,7 @@ try {
       # 3) 出来たものを push（のみさんが見られるように）
       # ⚠ コミットメッセージは1行にする。複数行にすると、バッククォート継続と
       #    組み合わさってPowerShellのパーサが壊れる（2026-08-13に実際に起きた）。
-      $msg = "今週の投稿パックを作った: $today-weekly（自動生成。まだ投稿していない。承認待ち）"
+      $msg = "投稿パックを作った: $today-$suffix（自動生成。まだ投稿していない。承認待ち）"
       git add -A
       git -c user.name="unizom-insta bot" -c user.email="teruhiko.nomizu@gmail.com" commit -q -m $msg 2>&1 | Out-Null
       git push -q 2>&1 | Out-Null

@@ -1,6 +1,7 @@
 # unizom-insta
 
-@unizom.jp（unizom／Amazon表示 NOMIZU）のInstagram投稿を、**毎週金曜にクラウドが無人で作って投稿する**仕組み。
+@unizom.jp（unizom／Amazon表示 NOMIZU）のInstagram投稿を、**週2本（火曜＝リール・金曜＝カルーセル/写真）このPCが無人で作り、のみさんの承認後にAPIで投稿する**仕組み。
+（2026-09-11 に週1→週2へ。リールは `scripts/build_reel.py` が素材写真から ffmpeg で組み立てる）
 姉妹プロジェクト `ai-radio`（ラジオ2番組）と同じ構成。
 
 > 🚧 **構築中**（2026-08-13 着手）。今はトークンの疎通確認まで。

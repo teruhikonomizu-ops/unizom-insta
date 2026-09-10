@@ -10,7 +10,13 @@
 
 投稿は別（publish.yml）。**のみさんが承認するまで何も公開されない。**
 
-使い方: python3 scripts/build_weekly.py <パック名> [--topic <id>]
+使い方: python3 scripts/build_weekly.py <パック名> [--topic <id>] [--reel]
+
+--reel（2026-09-11追加・火曜の「リールの日」用）:
+  カードを 9:16 で作り、build_reel.py で 1.mp4 に組み立てる。パック直下には動画だけを置く
+  （publish_post.py は画像と動画の混在を弾くので、カードは cards/ に入れる）。
+  ネタは「形式」にリールと書いてあるものを優先し、無ければ承認済みの先頭を使う
+  （どのネタもカード文言は同じ形なので、リールにできる）。
 """
 
 import argparse
@@ -37,8 +43,11 @@ def save(path, data):
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def pick_topic(topics, wanted_id=None):
+def pick_topic(topics, wanted_id=None, reel=False):
     approved = [t for t in topics["ネタ"] if t["状態"] == "承認済み"]
+    if reel:
+        # リール向きと書いてあるネタを先に。無ければ普通の順
+        approved.sort(key=lambda t: 0 if "リール" in t.get("形式", "") else 1)
     if wanted_id:
         for t in topics["ネタ"]:
             if t["id"] == wanted_id:
@@ -65,7 +74,7 @@ def claude_cmd():
     raise SystemExit("claude が見つからない（npm install -g @anthropic-ai/claude-code）")
 
 
-def run_claude(topic):
+def run_claude(topic, reel=False):
     """執筆させる。JSONで返らなければ作り直させる。"""
     exe = claude_cmd()
     body = (
@@ -74,6 +83,12 @@ def run_claude(topic):
         + json.dumps(topic, ensure_ascii=False, indent=2)
         + "\n```\n"
     )
+    if reel:
+        body += (
+            "\n# 今回はリール（動画）です\n\n"
+            "指示書の「リールのとき」の節に従ってください。ネタの「形式」に書いてある枚数は無視し、"
+            "cards は 4〜6 枚にしてください。\n"
+        )
     for attempt in (1, 2, 3):
         r = subprocess.run(
             [exe, "-p", "--model", "sonnet"],
@@ -120,6 +135,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("pack", help="作るパック名（例: 2026-08-29-sole-choice）")
     ap.add_argument("--topic", help="ネタのidを指定（既定は承認済みの先頭）")
+    ap.add_argument("--reel", action="store_true", help="リール（9:16の動画）として作る")
     ap.add_argument(
         "--no-ledger",
         action="store_true",
@@ -129,10 +145,10 @@ def main():
 
     topics = load(TOPICS)
     stock = load(STOCK_INDEX)
-    topic = pick_topic(topics, args.topic)
-    print(f"ネタ: {topic['id']} / {topic['テーマ']}")
+    topic = pick_topic(topics, args.topic, reel=args.reel)
+    print(f"ネタ: {topic['id']} / {topic['テーマ']}" + ("  [リール]" if args.reel else ""))
 
-    written = run_claude(topic)
+    written = run_claude(topic, reel=args.reel)
     cards_spec = written["cards"]
     print(f"カード {len(cards_spec)}枚 / キャプション {len(written['caption'])}文字")
 
@@ -152,18 +168,23 @@ def main():
         shutil.copy(REPO / chosen["ファイル"], raw_dir / f"{i}.jpg")
         cards.append({
             "src": f"raw/{i}.jpg",
-            "out": f"{i}.jpg",
+            "out": f"cards/{i}.jpg" if args.reel else f"{i}.jpg",
             "kicker": c.get("kicker", ""),
             "lines": c.get("lines", []),
             "subs": c.get("subs", []),
             "line_size": 96 if len(c.get("lines", [""])[0]) > 6 else 116,
         })
         print(f"  {i}枚目: {scene} -> {chosen['id']}")
-    save(pack_dir / "cards.json", {"cards": cards})
+    save(pack_dir / "cards.json", {"format": "reel" if args.reel else "feed", "cards": cards})
 
     # --- 文字を載せる ---
     subprocess.run([sys.executable, str(REPO / "scripts" / "overlay_cards.py"), str(pack_dir)],
                    check=True)
+
+    # --- リールなら動画に組む（パック直下は 1.mp4 だけになる） ---
+    if args.reel:
+        subprocess.run([sys.executable, str(REPO / "scripts" / "build_reel.py"), str(pack_dir)],
+                       check=True)
 
     # --- 安全チェック（落ちたらパックごと捨てる） ---
     check = subprocess.run(

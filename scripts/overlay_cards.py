@@ -1,7 +1,10 @@
-# カルーセル用の文字載せ。写真の上に読める文字を置き、投稿用のJPEGを書き出す。
+# カルーセル／リール用の文字載せ。写真の上に読める文字を置き、投稿用のJPEGを書き出す。
 #
 # 使い方: python3 scripts/overlay_cards.py <パックのフォルダ>
 # そのフォルダの cards.json を読み、各カードを 1080x1350(4:5) のJPEGにする。
+# cards.json に "format": "reel" があれば 1080x1920(9:16) で書き出す（2026-09-11追加）。
+#   リールは画面の下（キャプション・ボタン）と右端（いいね等のアイコン）がUIに隠れるので、
+#   文字は下端から 420px 以上・右端から 190px 以上あける。動画にするのは build_reel.py。
 #
 # ⚠ InstagramのAPIはPNGを受け付けない。必ずJPEGで書き出すこと。
 # ⚠ フォントはリポジトリ同梱の Noto Sans JP を使う。
@@ -16,6 +19,22 @@ from PIL import Image, ImageDraw, ImageFont
 W, H = 1080, 1350          # Instagramのフィード縦位置いっぱい(4:5)
 MARGIN_X = 80
 BOTTOM_PAD = 110
+RIGHT_SAFE = 0             # 右側に文字を寄せない幅（リールだけ使う）
+
+
+def set_format(fmt):
+    """"reel" なら 9:16 の寸法と安全域に切り替える。"""
+    global W, H, MARGIN_X, BOTTOM_PAD, RIGHT_SAFE
+    if fmt == "reel":
+        W, H = 1080, 1920
+        MARGIN_X = 90
+        BOTTOM_PAD = 420       # 下端1500px より上に収める（UIに隠れない）
+        RIGHT_SAFE = 190       # 右のアイコン列を避ける
+    else:
+        W, H = 1080, 1350
+        MARGIN_X = 80
+        BOTTOM_PAD = 110
+        RIGHT_SAFE = 0
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FONTS = os.path.join(os.path.dirname(HERE), "assets", "fonts")
@@ -102,7 +121,7 @@ def wrap(draw, text, font, limit):
 
 def text_block(draw, card, fonts):
     """(描画する行のリスト, 合計の高さ) を返す。下端から積み上げるため先に高さが要る。"""
-    limit = W - MARGIN_X * 2
+    limit = W - MARGIN_X * 2 - RIGHT_SAFE
     items = []
     if card.get("kicker"):
         items.append(("kicker", card["kicker"], fonts["kicker"], card.get("accent", "#D63036")))
@@ -132,11 +151,22 @@ def render(post_dir, card):
     im = add_scrim(im, card.get("scrim", 0.82), card.get("scrim_height", 0.58))
     draw = ImageDraw.Draw(im)
 
+    reel = RIGHT_SAFE > 0
     fonts = {
-        "kicker": ImageFont.truetype(FONT_BOLD, card.get("kicker_size", 40)),
+        "kicker": ImageFont.truetype(FONT_BOLD, card.get("kicker_size", 48 if reel else 40)),
         "line": ImageFont.truetype(FONT_BOLD, card.get("line_size", 104)),
-        "sub": ImageFont.truetype(FONT_MED, card.get("sub_size", 40)),
+        "sub": ImageFont.truetype(FONT_MED, card.get("sub_size", 46 if reel else 40)),
     }
+    if reel:
+        # リールは横幅が狭く、見出しが「折りたた／める長靴」のような所で折れる。
+        # 各行が1行に収まるまで見出しを縮める（下限76px＝9文字が収まる大きさ）。
+        limit = W - MARGIN_X * 2 - RIGHT_SAFE
+        size = card.get("line_size", 104)
+        while size > 76 and any(
+            not _fits(draw, ln, fonts["line"], limit) for ln in card.get("lines", [])
+        ):
+            size -= 4
+            fonts["line"] = ImageFont.truetype(FONT_BOLD, size)
     sized, total = text_block(draw, card, fonts)
 
     y = H - BOTTOM_PAD - total
@@ -157,12 +187,14 @@ def render(post_dir, card):
         y += h
 
     out = os.path.join(post_dir, card["out"])
+    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
     im.save(out, "JPEG", quality=92, optimize=True, progressive=True)
     print(f"saved {card['out']}  ({os.path.getsize(out) // 1024} KB)")
 
 
 def main(post_dir):
     spec = json.load(open(os.path.join(post_dir, "cards.json"), encoding="utf-8-sig"))
+    set_format(spec.get("format", "feed"))
     for card in spec["cards"]:
         render(post_dir, card)
 
