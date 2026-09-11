@@ -4,7 +4,7 @@
     {
       "src": "raw/1.jpg",
       "out": "cards/1.jpg",
-      "kicker": "新商品",
+      "kicker": "好評発売中",
       "lines": [
         "防水リュック"
       ],
@@ -53,7 +53,7 @@
     {
       "src": "raw/5.mp4",
       "out": "cards/5.png",
-      "kicker": "楽天で発売中",
+      "kicker": "Amazon・楽天で発売中",
       "lines": [
         "専用インソール"
       ],
