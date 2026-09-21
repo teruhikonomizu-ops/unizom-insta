@@ -114,9 +114,37 @@ def run_claude(topic, reel=False):
             body += f"\n\n【重要】前回の出力はJSONとして壊れていた（{e}）。整形し直すこと。"
             continue
         if data.get("caption") and data.get("cards"):
+            # 禁止語に当たったら、NG一覧を見せて書き直させる（2026-09-22追加）。
+            # 執筆役は共通の禁止語辞書を知らないので、黙って落とすと毎回同じ語で落ちる
+            # （9/22の火曜リールが「実際」1語でパックごと捨てられた）。
+            # 最後の回はそのまま返し、後段の安全チェックに判定させる（禁止語入りは従来どおり捨てる）。
+            ng = caption_ng(data["caption"])
+            if ng and attempt < 3:
+                print(f"禁止語に当たったので書き直させる（{attempt}回目）\n{ng}", file=sys.stderr)
+                body += (
+                    "\n\n【重要】前回のキャプションは安全チェックで落ちた。下のNGの語を使わずに、"
+                    "同じ内容を別の言い回しで書き直すこと。\n" + ng
+                )
+                continue
             return data
         print(f"caption か cards が空（{attempt}回目）", file=sys.stderr)
     raise SystemExit("執筆に3回失敗した")
+
+
+def caption_ng(caption):
+    """キャプションを safe_check.py に通し、落ちたらNG一覧（文字列）を返す。通れば空文字。
+
+    判定は safe_check.py と辞書に任せる（ここに禁止語を書かない＝2か所に書くと食い違う）。
+    """
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        p = pathlib.Path(d) / "caption.txt"
+        p.write_text(caption.strip() + "\n", encoding="utf-8")
+        r = subprocess.run(
+            [sys.executable, str(REPO / "scripts" / "safe_check.py"), str(p)],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+        )
+    return "" if r.returncode == 0 else r.stdout.strip()
 
 
 def pick_stock(stock, scene, used_ids):
