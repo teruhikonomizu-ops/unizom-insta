@@ -20,6 +20,7 @@ import argparse
 import datetime
 import json
 import pathlib
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -110,15 +111,31 @@ def this_week_pack():
     return None
 
 
+def todays_failure():
+    """_最終結果.txt（投稿パックのお知らせ.ps1 が書く1行）が今日の失敗なら、その理由を返す。"""
+    p = REPO / "_最終結果.txt"
+    if not p.exists():
+        return ""
+    line = p.read_text(encoding="utf-8-sig").strip().split("\n")[0]
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    m = re.match(r"\[失敗\] (\d{4}-\d{2}-\d{2}) \d{2}:\d{2} (.*)", line)
+    return m.group(2)[:300] if m and m.group(1) == today else ""
+
+
 def build_message():
     pack = this_week_pack()
     drift = dict_drift()
 
     if pack is None:
+        # 理由が分かっていればそのまま載せる（2026-09-22追加。以前は「可能性があります」としか
+        # 言えず、のみさんがClaudeに聞くまで原因が分からなかった）。
+        why = todays_failure()
+        reason = (f"理由: {why}\n" if why
+                  else "ネタ帳が尽きたか、安全チェックで止まった可能性があります。\n")
         body = (
             "[info][title]インスタ（今週）[/title]"
             "今週分の投稿がまだできていません。\n"
-            "ネタ帳が尽きたか、安全チェックで止まった可能性があります。\n"
+            + reason +
             "Claudeに「インスタの今週どうなってる？」と聞いてください。[/info]"
         )
     else:
