@@ -1,0 +1,44 @@
+{
+  "format": "feed",
+  "cards": [
+    {
+      "src": "raw/1.jpg",
+      "out": "1.jpg",
+      "kicker": "AIで仕事",
+      "lines": [
+        "商品ページの文章を",
+        "AIと作っています"
+      ],
+      "subs": [
+        "商品名・説明文・画像"
+      ],
+      "line_size": 96
+    },
+    {
+      "src": "raw/2.jpg",
+      "out": "2.jpg",
+      "kicker": "言い回し",
+      "lines": [
+        "使えない言葉は",
+        "機械で照合"
+      ],
+      "subs": [
+        "薬機法・景表法の辞書を用意"
+      ],
+      "line_size": 96
+    },
+    {
+      "src": "raw/3.jpg",
+      "out": "3.jpg",
+      "kicker": "書き方",
+      "lines": [
+        "言い切らず",
+        "事実で書く"
+      ],
+      "subs": [
+        "言い切りの表現は避けます"
+      ],
+      "line_size": 116
+    }
+  ]
+}
