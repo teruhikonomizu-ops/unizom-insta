@@ -1,0 +1,58 @@
+name: token-refresh
+
+# Instagramの長期トークン（60日で切れる）を毎週自動で延長し、GitHub Secretsへ書き戻す。
+# 60日ごとの手作業（Metaで取り直し→貼り直し）を無くすためのもの（2026-09-28 のみさん承認）。
+# 失敗するとGitHubの失敗メールが飛ぶ。何週も続けて失敗しても、token-check の
+# 「残り14日で警報」が最後の砦として残っている（あちらは消さない）。
+#
+# 必要な Secrets:
+#   IG_ACCESS_TOKEN       … 延長する対象
+#   SECRETS_WRITER_TOKEN  … このリポジトリの Secrets 書き込みだけを許した合鍵（fine-grained PAT）
+on:
+  workflow_dispatch:
+    inputs:
+      check_only:
+        description: "延長せず、合鍵と今のトークンが使えるかだけ確かめる"
+        required: true
+        default: false
+        type: boolean
+  schedule:
+    - cron: "17 21 * * 0"   # 毎週月曜 06:17 JST（token-check の 07:00 より前に延長しておく）
+
+permissions:
+  contents: write   # token_issued.txt の日付を直してコミットするため
+
+concurrency:
+  group: token-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      # ref: main＝遅れて届いた実行でも、走り出した瞬間の最新を取る（ai-radio と同じ対策）
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: トークンを延長して書き戻す
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: "17841451592190940"
+          GH_TOKEN: ${{ secrets.SECRETS_WRITER_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          CHECK_ONLY: ${{ inputs.check_only && '--check' || '' }}
+        run: python3 scripts/refresh_token.py token_issued.txt $CHECK_ONLY
+
+      - name: 発行日をコミット
+        if: ${{ !inputs.check_only }}
+        run: |
+          git add token_issued.txt
+          if git diff --cached --quiet; then
+            echo "発行日に変化なし"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "トークン自動延長: 発行日を $(head -1 token_issued.txt) に更新"
+          git push origin HEAD:main
