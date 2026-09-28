@@ -30,6 +30,7 @@ import ig_api
 
 LIFETIME_DAYS = 60   # check_expiry.py と同じ。Metaの長期トークンの寿命
 SECRET_NAME = "IG_ACCESS_TOKEN"
+WRITE_TEST_NAME = "TOKEN_REFRESH_WRITE_TEST"   # --check で書き込み権限を試す専用の名前（中身は日時だけ）
 DATE_LINE = re.compile(r"^\d{4}-\d{2}-\d{2}\s*$")
 
 
@@ -86,6 +87,14 @@ def main():
             print(f"::error::今のトークンで疎通できない: {e}")
             return 1
         print(f"今のトークン: OK @{who.get('username')}")
+        # 書き込み権限の確認。本物（IG_ACCESS_TOKEN）には触らず、試験用の名前に日時だけ書く。
+        # 消さずに残す＝次の確認で上書きされるだけ（削除の手間と危険を増やさない）。
+        stamp = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+        code, out = gh(["secret", "set", WRITE_TEST_NAME], stdin_text=f"checked {stamp}")
+        if code != 0:
+            print(f"::error::合鍵で Secrets に書き込めない。権限が Read-only になっていないか確認: {out}")
+            return 1
+        print(f"合鍵: 書き込みもできた（試験用 {WRITE_TEST_NAME} に日時を書いた）")
         print("確認のみ（延長はしていない）")
         return 0
 
