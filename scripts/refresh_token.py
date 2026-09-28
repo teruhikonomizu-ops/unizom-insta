@@ -111,6 +111,11 @@ def main():
     if not new:
         print("::error::延長の返答に access_token が無い")
         return 1
+    # 公開リポジトリ＝実行ログは誰でも読める。新しいトークンはこの実行ではまだSecretとして
+    # 登録されていない＝自動で伏字にならないので、万一どこかに出ても伏字になるよう登録しておく。
+    # Actionsの中だけで行う（手元で動かした時に画面へ値を出さないため）。
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        print(f"::add-mask::{new}", flush=True)
 
     # 2. 書き戻す前に、新しいトークンが本当に使えるか確かめる
     os.environ["IG_ACCESS_TOKEN"] = new
