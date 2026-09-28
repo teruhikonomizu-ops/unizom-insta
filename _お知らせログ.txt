@@ -116,3 +116,66 @@
 2026-09-25 07:30:46  pushした
 2026-09-25 07:30:46  通知: 送った先: 野水
 2026-09-25 08:13  投稿した: 2026-09-25-weekly media_id=17903614512590688 https://www.instagram.com/p/DdsCbxJFZ2B/（のみさんの「投稿して」を受けて・Actions run 36071545593）
+2026-09-29 07:30:01  パックを作る: 2026-09-29-reel
+2026-09-29 07:30:17    saved cards/1.jpg  (281 KB)
+2026-09-29 07:30:17    saved cards/2.png  (53 KB)
+2026-09-29 07:30:17    saved cards/3.jpg  (338 KB)
+2026-09-29 07:30:17    saved cards/4.jpg  (251 KB)
+2026-09-29 07:30:17    saved cards/5.jpg  (293 KB)
+2026-09-29 07:30:17    saved cards/6.jpg  (414 KB)
+2026-09-29 07:30:17    ffmpeg が見つからない（winget install Gyan.FFmpeg）
+2026-09-29 07:30:17    ネタ: insole-hit / 長靴・ウェーダー専用インソール、好評発売中  [リール]
+2026-09-29 07:30:17    カード 6枚 / キャプション 445文字
+2026-09-29 07:30:17      1枚目: 商品 -> insole-scenes [商品]
+2026-09-29 07:30:17      2枚目: 商品 -> insole-closeup [商品]
+2026-09-29 07:30:17      3枚目: 田んぼ -> insole-details [商品]
+2026-09-29 07:30:17      4枚目: 商品 -> insole-angles [商品]
+2026-09-29 07:30:17      5枚目: 畑・家庭菜園 -> insole-main [商品]
+2026-09-29 07:30:17      6枚目: 田んぼ -> tanbo-before-harvest
+2026-09-29 07:30:17    Traceback (most recent call last):
+2026-09-29 07:30:17      File "C:\Users\Owner\repos\unizom-insta\scripts\build_weekly.py", line 303, in <module>
+2026-09-29 07:30:18        main()
+2026-09-29 07:30:18        ~~~~^^
+2026-09-29 07:30:18      File "C:\Users\Owner\repos\unizom-insta\scripts\build_weekly.py", line 260, in main
+2026-09-29 07:30:18        subprocess.run([sys.executable, str(REPO / "scripts" / "build_reel.py"), str(pack_dir)],
+2026-09-29 07:30:18        ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-09-29 07:30:18                       check=True)
+2026-09-29 07:30:18                       ^^^^^^^^^^^
+2026-09-29 07:30:18      File "C:\Users\Owner\AppData\Local\Programs\Python\Python314\Lib\subprocess.py", line 578, in run
+2026-09-29 07:30:18        raise CalledProcessError(retcode, process.args,
+2026-09-29 07:30:18                                 output=stdout, stderr=stderr)
+2026-09-29 07:30:18    subprocess.CalledProcessError: Command '['C:\\Users\\Owner\\AppData\\Local\\Programs\\Python\\Python314\\python.exe', 'C:\\Users\\Owner\\repos\\unizom-insta\\scripts\\build_reel.py', 'C:\\Users\\Owner\\repos\\unizom-insta\\docs\\media\\2026-09-29-reel']' returned non-zero exit status 1.
+2026-09-29 07:30:18  パック作成に失敗した。通知だけ送って終わる（黙って消えないように）。
+2026-09-29 07:30:18  通知: 送った先: 野水
+2026-09-29 07:40:52  パックを作る: 2026-09-29-reel
+2026-09-29 07:41:19    saved cards/1.jpg  (281 KB)
+2026-09-29 07:41:19    saved cards/2.png  (50 KB)
+2026-09-29 07:41:19    saved cards/3.jpg  (239 KB)
+2026-09-29 07:41:19    saved cards/4.jpg  (330 KB)
+2026-09-29 07:41:19    saved cards/5.jpg  (292 KB)
+2026-09-29 07:41:19    saved cards/6.jpg  (474 KB)
+2026-09-29 07:41:19      1枚目: 3.2秒 (寄る)
+2026-09-29 07:41:19      2枚目: 4.4秒 (動画 2.mp4)
+2026-09-29 07:41:19      3枚目: 4.1秒 (寄る)
+2026-09-29 07:41:19      4枚目: 3.8秒 (引く)
+2026-09-29 07:41:19      5枚目: 4.8秒 (寄る)
+2026-09-29 07:41:19      6枚目: 3.8秒 (引く)
+2026-09-29 07:41:19      BGM: 無し（無音トラックを付ける）
+2026-09-29 07:41:19    完成: 1.mp4  24.2秒  12161 KB
+2026-09-29 07:41:19    ネタ: insole-hit / 長靴・ウェーダー専用インソール、好評発売中  [リール]
+2026-09-29 07:41:19    カード 6枚 / キャプション 464文字
+2026-09-29 07:41:19      1枚目: 商品 -> insole-scenes [商品]
+2026-09-29 07:41:19      2枚目: 田んぼ -> insole-closeup [商品]
+2026-09-29 07:41:19      3枚目: 商品 -> insole-angles [商品]
+2026-09-29 07:41:19      4枚目: 畑・家庭菜園 -> insole-details [商品]
+2026-09-29 07:41:19      5枚目: 商品 -> insole-main [商品]
+2026-09-29 07:41:19      6枚目: 畑・家庭菜園 -> hatake-autumn
+2026-09-29 07:41:19    
+2026-09-29 07:41:19    === caption.txt (465文字) ===
+2026-09-29 07:41:19      禁止語の検出なし
+2026-09-29 07:41:19    
+2026-09-29 07:41:19    PASS: 禁止語ゼロ
+2026-09-29 07:41:19    
+2026-09-29 07:41:19    
+2026-09-29 07:41:19    完成: docs/media/2026-09-29-reel
+2026-09-29 07:41:19    承認済みのネタの残り: 3件
