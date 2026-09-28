@@ -25,7 +25,12 @@
 
 | 名前 | 中身 | 備考 |
 |---|---|---|
-| `IG_ACCESS_TOKEN` | Instagram長期アクセストークン | **これだけがSecret。** 60日で失効するので `refresh_token()` で自動延長する |
+| `IG_ACCESS_TOKEN` | Instagram長期アクセストークン | 60日で失効する。`token-refresh`（毎週月曜06:17 JST）が `scripts/refresh_token.py` で自動延長して書き戻す（2026-09-28〜） |
+| `SECRETS_WRITER_TOKEN` | fine-grained PAT `unizom-insta-token-refresh` | 上の書き戻し専用の合鍵。このリポジトリの **Secrets 読み書きだけ**・無期限。のみさんが作成（Claudeは値を扱わない） |
+| `CLAUDE_CODE_OAUTH_TOKEN` | Claude Code の認証 | `weekly.yml`（クラウドでのパック作り）用。401で通らずPC側へ寄せたため現在は未使用 |
+| `TOKEN_REFRESH_WRITE_TEST` | 日時だけ | 秘密ではない。`token-refresh` の確認モード（check_only）が書き込み権限を試す専用の名前。消さなくてよい |
+
+延長が何週も失敗して残り14日を切ると `token-check` が失敗メールを出す。その時だけ `token_issued.txt` の手順で手で取り直す。
 
 `IG_USER_ID`（`17841451592190940`）は秘密情報ではない（公開アカウントの識別子）ので、
 Secretsには入れずワークフローに直書きしている。Secretsに入れる物を減らすほど取り違えが減るため。
