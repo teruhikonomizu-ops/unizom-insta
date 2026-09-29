@@ -90,10 +90,15 @@ def run_claude(topic, reel=False):
             "cards は 4〜6 枚にしてください。\n"
         )
     for attempt in (1, 2, 3):
-        r = subprocess.run(
-            [exe, "-p", "--model", "sonnet"],
-            input=body, capture_output=True, text=True, encoding="utf-8", errors="replace",
-        )
+        try:
+            r = subprocess.run(
+                # 文章を書くだけ＝道具も接続先も持たせない・権限モードも明示・15分で打ち切り（2026-09-29 総点検）
+                [exe, "-p", "--model", "sonnet", "--permission-mode", "dontAsk", "--tools", "", "--strict-mcp-config"],
+                input=body, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=900,
+            )
+        except subprocess.TimeoutExpired:
+            print(f"claudeの呼び出しが15分で終わらなかった（{attempt}回目）", file=sys.stderr)
+            continue
         if r.returncode != 0:
             # 何が起きたか分からないと直せない。終了コード・標準出力・標準エラーを全部出す。
             print(f"claudeの呼び出しが失敗（{attempt}回目）exit={r.returncode}", file=sys.stderr)
