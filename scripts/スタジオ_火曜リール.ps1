@@ -38,6 +38,8 @@ try {
     git add "docs/media/$pack" topics.json stock/index.json studio/history.json
     $msg = "投稿パックを作った: $pack（高品質版・リール・スタジオ。まだ投稿していない。承認待ち）"
     git -c user.name="unizom-insta bot" -c user.email="teruhiko.nomizu@gmail.com" commit -q -m $msg 2>&1 | Out-Null
+    # 夜のあいだにクラウド側のコミット（トークン延長など）が入っていても push できるよう、直前に取り込む
+    git pull --rebase --autostash -q 2>&1 | Out-Null
     git push -q 2>&1 | Out-Null
     Note "pushした（火曜07:30の通知で のみさんへ届く）"
   }
