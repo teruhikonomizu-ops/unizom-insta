@@ -66,9 +66,18 @@ try {
   if ($Reel) { $suffix = "reel"; $extra = @("--reel") }
   $exists = Get-ChildItem (Join-Path $repo "docs\media") -Directory -ErrorAction SilentlyContinue |
             Where-Object { $_.Name -like "$today-*" } | Select-Object -First 1
+  # 火曜は前夜のリール・スタジオ（高品質版）の結果を見る（2026-09-29追加）。失敗なら理由を通知に添える
+  $studioNote = ""
+  $studioFile = Join-Path $repo "_スタジオ結果.txt"
+  if ($Reel -and (Test-Path $studioFile) -and ((Get-Item $studioFile).LastWriteTime -gt (Get-Date).AddHours(-14))) {
+    $s1 = (Get-Content $studioFile -Encoding UTF8 -TotalCount 1)
+    if ($s1 -like "[[]失敗]*") { $studioNote = " ※夜の高品質版は作れず、従来の自動リールにした（" + ($s1 -replace '^\[失敗\]\s*\S+\s+\S+\s*', '') + "）" }
+  }
   if ($exists) {
+    $kind = ""
+    if (Test-Path (Join-Path $exists.FullName "studio.json")) { $kind = "高品質版・" }
     Note "その日のパックは用意済み($($exists.Name))。作らずに通知だけする。"
-    Result "成功" "その日のパックは用意済み($($exists.Name))"
+    Result "成功" "その日のパックは用意済み($kind$($exists.Name))$studioNote"
   }
   else {
     Note "パックを作る: $today-$suffix"
@@ -79,7 +88,7 @@ try {
       # 理由＝禁止語のNG行があればそれ、無ければ出力の最後の意味のある行
       $why = @($out | Where-Object { $_ -match '^\s*NG ' } | ForEach-Object { $_.Trim() } | Select-Object -Unique)
       if (-not $why) { $why = @($out | Where-Object { $_.Trim() } | Select-Object -Last 2) }
-      Result "失敗" ("$today-$suffix を作れなかった: " + ($why -join " ／ "))
+      Result "失敗" ("$today-$suffix を作れなかった: " + ($why -join " ／ ") + $studioNote)
       Note "パック作成に失敗した。通知だけ送って終わる（黙って消えないように）。"
     }
     else {
@@ -91,7 +100,7 @@ try {
       git -c user.name="unizom-insta bot" -c user.email="teruhiko.nomizu@gmail.com" commit -q -m $msg 2>&1 | Out-Null
       git push -q 2>&1 | Out-Null
       Note "pushした"
-      Result "成功" "$today-$suffix を作った（未投稿・承認待ち）"
+      Result "成功" "$today-$suffix を作った（未投稿・承認待ち）$studioNote"
     }
   }
 

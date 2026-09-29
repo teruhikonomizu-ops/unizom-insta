@@ -1,0 +1,19 @@
+{
+  "_お手本": "2026-09-29 インソール好評発売中（34〜39秒・6場面）。書き手はこの形でJSONを返す。",
+  "speaker": 497929760,
+  "target_rate": 7.0,
+  "sentence_gap": 0.42,
+  "scenes": [
+    {"id": "hook", "show": "長靴の中で、足が動く。", "sentences": ["長靴の中で、足が動く。"], "pad": 1.2, "video": "hook"},
+    {"id": "toe",  "show": "つま先は約7mmの極厚。すき間を埋めて、前滑りを抑えます。", "sentences": ["つま先は、約7ミリの、ごくあつ。", "すき間を埋めて、前滑りを抑えます。"], "pad": 0.8},
+    {"id": "heel", "show": "深型ヒールカップで、かかとが抜けにくい。土踏まずには、ねじれを抑えるTPUシャンク。", "sentences": ["フカガタの、ヒールカップで、かかとが抜けにくい。", "土踏まずには、ねじれを抑える、ティーピーユーシャンク。"], "pad": 0.8},
+    {"id": "air",  "show": "肌に当たる面は3Dメッシュ。通気穴つきEVAで、ムレにも配慮。", "sentences": ["肌に当たる面は、スリーディーメッシュ。", "通気穴つきの、イーブイエーで、ムレにも配慮。"], "pad": 0.8},
+    {"id": "size", "show": "サイズはS・M・L。カットラインで調整できます。", "sentences": ["サイズは、エス、エム、エル。", "カットラインで、調整できます。"], "pad": 0.8},
+    {"id": "end",  "show": "長靴・ウェーダー専用インソール。好評発売中です。", "sentences": ["長靴、ウェーダー専用の、インソール。", "好評発売中です。"], "pad": 2.2}
+  ],
+  "assets": {"duo": "cutout:insole-duo-38", "side": "cutout:insole-side", "pkg": "cutout:insole-pkg", "logo": "cutout:unizom-logo", "bg": "hf:bg"},
+  "higgsfield": {
+    "video": {"key": "hook", "prompt": "[SCENE] Early autumn evening in a Japanese rice paddy right after harvest. Ankle-height close shot: a farmer wearing plain matte black knee-high rubber boots steps down from a grassy earthen levee into shallow muddy paddy water, the boot sinks a little into the soft mud, brown water ripples outward, then the second boot follows with one more step forward.\n[CAMERA] Low stable tracking shot at boot height, 35mm lens, aperture f/5.6 so the rice stubble and levee behind stay clearly readable (no heavy background blur), focus on the boots. Smooth, real-time speed, no slow-motion.\n[LIGHTING] Low warm golden-hour side light from camera-left, 3800K, long soft shadows, specular glints on wet mud and water.\n[MATERIALS & TEXTURE] Glossy wet black rubber, sticky dark brown mud, cut rice stubble rows, dry grass on the levee.\n[COLOR PALETTE] Charcoal black, deep earth brown, muted green-gold. Natural contrast.\n[AUDIO] Natural sounds only: squelch of boots in mud, small water splashes, faint evening insects. No music, no voice.\n[AVOID] Logos, text, letters or brand marks on the boots, extra legs, deformed feet, morphing boots, camera shake, fisheye distortion, heavy bokeh, people's faces."},
+    "images": [{"key": "bg", "prompt": "[SCENE] A Japanese rice paddy at golden hour in early autumn, vertical frame. In the lower half, a weathered flat wooden plank lies across a grassy earthen levee at the edge of the paddy, empty and clean, as a natural stage in the foreground. Behind it, rows of harvested rice stubble and shallow water reflecting the warm sky; distant low mountains and a few trees. Upper third: calm, tonally uniform soft evening sky within the natural scene.\n[LIGHTING] Low sun from camera-right behind the scene, 3600K warm rim light, soft long shadows, subtle haze.\n[LENS & CAMERA] Shot on 35mm, aperture f/8, the plank in sharp focus and the background clearly readable with only mild depth falloff.\n[MATERIALS & TEXTURE] Raw grey-brown wood grain, damp dark soil, dry golden stubble, glassy paddy water.\n[COLOR PALETTE] Deep charcoal shadows, warm amber light, muted green-gold, one natural deep red accent from red spider lilies.\n[AVOID] Text, letters, logos, watermarks, people, animals, boots, products on the plank, oversaturated sky, heavy blur, tilted horizon.\nresolution: 2k"}]
+  }
+}
