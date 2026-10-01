@@ -174,9 +174,11 @@ def build_report():
     pack = this_week_pack()
     drift = dict_drift()
     lines = []
-    if pack is None:
-        why = todays_failure()
-        lines.append(f"[失敗] {today} 今日の投稿パックができていない")
+    why = todays_failure()
+    # 今日の結果が[失敗]なら、途中のフォルダが残っていても[失敗]を出す（承認待ちと誤表示しない）
+    if pack is None or why:
+        lines.append(f"[失敗] {today} 今日の投稿パックができていない" if pack is None
+                     else f"[失敗] {today} {pack.name} は途中で止まった（投稿しないこと）")
         lines.append(f"理由: {why or 'ネタ帳が尽きたか、安全チェックで止まった可能性'}")
         lines.append("直し方: Claudeに「インスタの今日どうなってる？」と聞く")
     else:
@@ -202,7 +204,13 @@ def main():
     if args.to_file:
         p = pathlib.Path(args.to_file)
         p.parent.mkdir(parents=True, exist_ok=True)
-        text = build_report()
+        try:
+            text = build_report()
+        except Exception as e:  # 作れなくても「失敗」は必ず残す（静かに古い報告のままにしない）
+            today = datetime.datetime.now().strftime("%Y-%m-%d")
+            text = (f"[失敗] {today} 朝会への報告を作れなかった\n"
+                    f"理由: {type(e).__name__}: {str(e)[:300]}\n"
+                    "直し方: Claudeに「インスタの今日どうなってる？」と聞く\n")
         p.write_text(text, encoding="utf-8-sig")
         print(f"朝会への報告を書いた: {p} / {text.splitlines()[0]}")
         return 0
