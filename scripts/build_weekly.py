@@ -165,21 +165,41 @@ def pick_stock(stock, scene, used_ids):
     return cands[0]
 
 
-def pick_product(stock, products, kind, used_ids, text=""):
+def _card_text(c):
+    return c.get("kicker", "") + " ".join(c.get("lines", [])) + " ".join(c.get("subs", []))
+
+
+def pick_product(stock, products, kind, used_ids, text="", need_hit=False, head="", others=""):
     """商品の素材（種類=商品写真／商品動画）を選ぶ。無ければ None。
 
     2026-09-11 のみさん指示「風景だけ流れて商品が1個も出てない。商品もちゃんと出して」。
     ネタに「商品」が書いてあれば、表紙と偶数枚目は商品の写真・動画カットにする。
     札の文言（text）に合う素材を優先する（「止水ファスナー」の札にはファスナーの寄り、など）。
+
+    need_hit=True は奇数枚目・締め用（2026-10-02 のみさん指摘「エアメッシュの札がパソコンの画像」）。
+    札の文言にキーワードが当たる寄りの素材だけを返す。表紙用の全体写真（主役）は使わない。
+    head（見出し＝kicker＋lines）で当たったキーワードは2倍に数える（小さい補足文より札の主題を優先）。
+    others（他の札の文言）に当たり、この札には当たらない素材は後回しにする
+    （ファスナーの札が背面の写真を先に取ってしまい、背中の札に回らなかったため）。
     """
+    def hits(s, t=None):
+        ks = [k for k in s.get("キーワード", []) if k]
+        if t is not None:
+            return sum(1 for k in ks if k in t)
+        return sum(1 for k in ks if k in text) + sum(1 for k in ks if k in head)
+
     cands = [s for s in stock["素材"]
              if s.get("種類") == kind and s.get("商品") in products and s["id"] not in used_ids]
+    if need_hit:
+        cands = [s for s in cands if not s.get("主役") and hits(s) > 0]
     if not cands:
         return None
 
     def score(s):
-        hit = sum(1 for k in s.get("キーワード", []) if k and k in text)
-        return (-hit, 0 if s.get("主役") else 1, s["使った回数"], s["id"])
+        h = hits(s)
+        # 他の札に強く当たる寄りの素材ほど後回し（主役＝表紙の全体写真は対象外。表紙から外れないように）
+        reserved = hits(s, others) if h == 0 and not s.get("主役") else 0
+        return (-h, reserved, 0 if s.get("主役") else 1, s["使った回数"], s["id"])
 
     cands.sort(key=score)
     return cands[0]
@@ -216,6 +236,7 @@ def main():
     # --- 素材を選んで並べる ---
     # ネタに「商品」があれば、表紙＝商品写真、偶数枚目＝商品の動画カット（リール）か商品写真、
     # 奇数枚目＝風景（Claudeが scene に「商品」と書いた枚も商品写真）。締めの1枚は風景でよい。
+    # ただし奇数枚目・締めでも、札の文言が商品の寄り素材のキーワードに当たれば商品素材にする（2026-10-02）。
     products = topic.get("商品") or []
     if isinstance(products, str):
         products = [products]
@@ -226,18 +247,37 @@ def main():
         chosen = None
         # 札の文言（素材選びの手がかり）と、札ごとの商品指定（例: インソールの札には insole）
         text = c.get("kicker", "") + " ".join(c.get("lines", [])) + " ".join(c.get("subs", []))
+        head = c.get("kicker", "") + " ".join(c.get("lines", []))
+        others = " ".join(_card_text(o) for j, o in enumerate(cards_spec, start=1) if j != i)
         card_products = [c["product"]] if c.get("product") in products else products
         if products:
             want_product = (i == 1) or (i % 2 == 0 and i != n) or scene == "商品" or c.get("product")
             if want_product:
                 if args.reel and i != 1:
-                    chosen = pick_product(stock, card_products, "商品動画", used, text)
+                    chosen = pick_product(stock, card_products, "商品動画", used, text, head=head, others=others)
                 if chosen is None:
-                    chosen = pick_product(stock, card_products, "商品写真", used, text)
+                    chosen = pick_product(stock, card_products, "商品写真", used, text, head=head, others=others)
+            else:
+                # 奇数枚目・締めでも、札が商品の特徴（エアメッシュ・背中など）を書いていれば
+                # 風景ではなく、その特徴の寄りの素材にする（風景だと札と絵が食い違うため）
+                if args.reel:
+                    chosen = pick_product(stock, card_products, "商品動画", used, text, need_hit=True, head=head, others=others)
+                if chosen is None:
+                    chosen = pick_product(stock, card_products, "商品写真", used, text, need_hit=True, head=head, others=others)
         if chosen is None:
             if scene == "商品":
                 scene = topic["素材の場面"][0] if topic["素材の場面"] else ""
-            chosen = pick_stock(stock, scene, used)
+            # 場面の合う風景が無い時、商品のネタなら関係の無い風景より商品素材を使う
+            # （2026-10-02「通勤」の風景が1枚も無く、パソコンの机の写真で代用されていた）
+            has_scene = any(s.get("種類", "写真") == "写真" and s["場面"] == scene and s["id"] not in used
+                            for s in stock["素材"])
+            if products and not has_scene:
+                if args.reel:
+                    chosen = pick_product(stock, card_products, "商品動画", used, text, head=head, others=others)
+                if chosen is None:
+                    chosen = pick_product(stock, card_products, "商品写真", used, text, head=head, others=others)
+            if chosen is None:
+                chosen = pick_stock(stock, scene, used)
         used.append(chosen["id"])
         ext = pathlib.Path(chosen["ファイル"]).suffix.lower()
         is_video = ext in (".mp4", ".mov")
