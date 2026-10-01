@@ -1,4 +1,8 @@
-﻿# 投稿パックを作って Chatwork で のみさんに知らせる（週2本・2026-09-11から）。
+﻿# 投稿パックを作って、朝会への報告ファイルに書く（週2本・2026-09-11から）。
+#
+# 🔴 2026-10-02〜 Chatworkには送らない（のみさん指示「チャットワークに上げてこないで、朝会の時に報告して。
+#    PCの前で確認できるから」）。報告ファイル＝OneDrive の ai記事自動\インスタ\自動投稿\_朝会への報告.txt
+#    （ノートPCの11:00代打の朝会からも見えるようにOneDriveに置く）。朝会が「今日やるべきこと」に載せる。
 #
 #   火曜 07:30  タスク インスタ_火曜のリール      → -Reel 付き → <日付>-reel   （動画1本）
 #   金曜 07:30  タスク インスタ_金曜のお知らせ    → 引数なし   → <日付>-weekly （カルーセル/写真）
@@ -22,8 +26,9 @@ $repo = Join-Path $env:USERPROFILE "repos\unizom-insta"
 $log  = Join-Path $repo "_お知らせログ.txt"
 # 結果を1行で書き出すファイル（2026-09-22追加）。conhost --headless 越しだとタスクの
 # LastTaskResult は中身が失敗しても 0 になるので、合否はこのファイルの1行目で見る。
-# notify_chatwork.py もこれを読んで、失敗の理由をChatworkの通知に載せる。
+# notify_chatwork.py もこれを読んで、失敗の理由を朝会への報告に載せる。
 $result = Join-Path $repo "_最終結果.txt"
+$report = Join-Path $env:USERPROFILE "OneDrive\デスクトップ\ai記事自動\インスタ\自動投稿\_朝会への報告.txt"
 
 # Pythonの出力(UTF-8)をCP932として読むとログが文字化けする（2026-09-22まで化けていた）
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
@@ -104,14 +109,14 @@ try {
     }
   }
 
-  # 4) Chatworkで知らせる
-  $out = @(RunAll { python (Join-Path $repo "scripts\notify_chatwork.py") })
-  Note ("通知: " + ($out -join " / "))
+  # 4) 朝会への報告ファイルに書く（2026-10-02〜。Chatworkには送らない）
+  $out = @(RunAll { python (Join-Path $repo "scripts\notify_chatwork.py") --to-file $report })
+  Note ("朝会への報告: " + ($out -join " / "))
 }
 catch {
   Note ("失敗: " + $_.Exception.Message)
   Result "失敗" ("お知らせスクリプトが途中で止まった: " + $_.Exception.Message)
-  # 失敗してもChatworkには知らせる（静かに死なせない）
-  try { RunAll { python (Join-Path $repo "scripts\notify_chatwork.py") } | Out-Null } catch {}
+  # 失敗しても朝会への報告は書く（静かに死なせない）
+  try { RunAll { python (Join-Path $repo "scripts\notify_chatwork.py") --to-file $report } | Out-Null } catch {}
   exit 1
 }

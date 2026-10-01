@@ -162,10 +162,50 @@ def build_message():
     return body
 
 
+def build_report():
+    """朝会が読む報告ファイルの中身（2026-10-02〜。Chatworkには送らない）。
+
+    のみさん指示「Chatworkに上げてこないで、朝会の時に報告して。PCの前で確認できるから」。
+    1行目は機械で読む見出し: [承認待ち] / [失敗] ＋ 日付。
+    投稿したら Claude が1行目を [投稿済み] に書き替える（インスタ投稿スキルの手順）。
+    """
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    pack = this_week_pack()
+    drift = dict_drift()
+    lines = []
+    if pack is None:
+        why = todays_failure()
+        lines.append(f"[失敗] {today} 今日の投稿パックができていない")
+        lines.append(f"理由: {why or 'ネタ帳が尽きたか、安全チェックで止まった可能性'}")
+        lines.append("直し方: Claudeに「インスタの今日どうなってる？」と聞く")
+    else:
+        caption = (pack / "caption.txt").read_text(encoding="utf-8-sig").strip()
+        media = sorted(p.name for p in pack.iterdir() if p.suffix.lower() in (".jpg", ".mp4"))
+        lines.append(f"[承認待ち] {today} {pack.name}")
+        lines.append(f"見出し: {caption.split(chr(10))[0][:60]}")
+        lines.append(f"中身: {'／'.join(media)}")
+        lines.append(f"見る: https://github.com/teruhikonomizu-ops/unizom-insta/tree/main/docs/media/{pack.name}")
+        lines.append("出し方: PCのClaudeに「インスタ出して」（何もしなければ投稿されない）")
+    lines.append("辞書のズレ: " + ("／".join(drift) + " が正典と食い違い（Claudeに「インスタの辞書を同期して」）"
+                                  if drift else "なし"))
+    lines.append(f"書いた時刻: {now}（投稿パックのお知らせ.ps1）")
+    return "\n".join(lines) + "\n"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="送らずに本文だけ出す")
+    ap.add_argument("--to-file", help="Chatworkへ送らず、朝会が読む報告ファイルに書く（2026-10-02〜の標準）")
     args = ap.parse_args()
+
+    if args.to_file:
+        p = pathlib.Path(args.to_file)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        text = build_report()
+        p.write_text(text, encoding="utf-8-sig")
+        print(f"朝会への報告を書いた: {p} / {text.splitlines()[0]}")
+        return 0
 
     body = build_message()
     if args.dry_run:
