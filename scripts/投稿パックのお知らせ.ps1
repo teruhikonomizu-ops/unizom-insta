@@ -54,6 +54,15 @@ function Note($msg) {
   Write-Host $line
   Add-Content -Path $log -Value $line -Encoding utf8
 }
+# git は必ずこれで呼ぶ（上の RunAll と同じ理由。Gitの注意書き "LF will be replaced by CRLF" でも止まる＝2026-10-05 スタジオで実害）。
+# 戻り値＝終了コード。
+function GitRun {
+  $gargs = $args
+  $out = @(RunAll { git @gargs })
+  $code = $LASTEXITCODE
+  if ($code -ne 0) { $out | Select-Object -Last 3 | ForEach-Object { Note ("  git: " + $_) } }
+  return $code
+}
 
 try {
   Set-Location $repo
@@ -61,8 +70,15 @@ try {
   $env:PYTHONIOENCODING = "utf-8"
 
   # 1) 最新を取り込む（他の場所で直した分を拾う）
-  git fetch --quiet origin 2>&1 | Out-Null
-  git merge --ff-only origin/main 2>&1 | Out-Null
+  $null = GitRun fetch --quiet origin
+  $null = GitRun merge --ff-only origin/main
+  # 前夜のスタジオが push できずに手元だけにコミットが残っていたら、ここで送る（2026-10-05の再発防止）
+  $ahead = "$(RunAll { git rev-list --count origin/main..HEAD } | Select-Object -Last 1)".Trim()
+  if ($ahead -match '^\d+$' -and [int]$ahead -gt 0) {
+    $null = GitRun pull --rebase --autostash -q
+    if ((GitRun push -q) -eq 0) { Note "手元だけにあったコミット $ahead 件を push した" }
+    else { Note "手元だけにあるコミット $ahead 件を push できなかった" }
+  }
 
   # 2) その日のパックが既にあるなら作らない
   #    人が先に用意した回（例: 2026-08-21-bag-teaser）を週次が上書きしないため
@@ -80,7 +96,11 @@ try {
   }
   if ($exists) {
     $kind = ""
-    if (Test-Path (Join-Path $exists.FullName "studio.json")) { $kind = "高品質版・" }
+    if (Test-Path (Join-Path $exists.FullName "studio.json")) {
+      $kind = "高品質版・"
+      # 高品質版が出来ているのに「従来の自動リールにした」と書かない（2026-10-05は push だけ失敗していた）
+      if ($studioNote) { $studioNote = " ※夜のスタジオは最後の送信で止まったが、高品質版は出来ていた（" + ($s1 -replace '^\[失敗\]\s*\S+\s+\S+\s*', '') + "）" }
+    }
     Note "その日のパックは用意済み($($exists.Name))。作らずに通知だけする。"
     Result "成功" "その日のパックは用意済み($kind$($exists.Name))$studioNote"
   }
@@ -101,11 +121,16 @@ try {
       # ⚠ コミットメッセージは1行にする。複数行にすると、バッククォート継続と
       #    組み合わさってPowerShellのパーサが壊れる（2026-08-13に実際に起きた）。
       $msg = "投稿パックを作った: $today-$suffix（自動生成。まだ投稿していない。承認待ち）"
-      git add -A
-      git -c user.name="unizom-insta bot" -c user.email="teruhiko.nomizu@gmail.com" commit -q -m $msg 2>&1 | Out-Null
-      git push -q 2>&1 | Out-Null
-      Note "pushした"
-      Result "成功" "$today-$suffix を作った（未投稿・承認待ち）$studioNote"
+      $null = GitRun add -A
+      $null = GitRun -c user.name="unizom-insta bot" -c user.email="teruhiko.nomizu@gmail.com" commit -q -m $msg
+      if ((GitRun push -q) -eq 0) {
+        Note "pushした"
+        Result "成功" "$today-$suffix を作った（未投稿・承認待ち）$studioNote"
+      }
+      else {
+        Note "push に失敗した"
+        Result "失敗" "$today-$suffix は作れたが GitHub への push に失敗した（手元にはある）$studioNote"
+      }
     }
   }
 
