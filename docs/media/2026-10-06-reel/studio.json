@@ -1,0 +1,88 @@
+{
+ "topic_id": "autumn-water-cold",
+ "style_plan": [
+  "hook=実写AI動画（紅葉の渓流に手を入れて、ひやっと引っ込める）",
+  "rule=クレヨン手描き（夏＝秋の丸印 → 水位が上がる物差し＋落ち葉）",
+  "depth=設計図の線画（人の線画3体×膝・腰・胸の水位＋赤い斜線で丈）",
+  "three=生成り紙に商品写真の白フチカード3枚（股下・腰丈・胸丈）",
+  "mesh=暗いスタジオに写真カード（胸丈の写真カット → 裏地カット）",
+  "end=紅葉の渓流の実写写真（coverImg）＋商品カード3枚＋実物ロゴ"
+ ],
+ "script": {
+  "speaker": 497929760,
+  "target_rate": 7.0,
+  "sentence_gap": 0.42,
+  "scenes": [
+   {
+    "id": "hook",
+    "show": "秋の水は、思ったより冷たい。",
+    "sentences": [
+     "秋の水は、思ったより冷たい。"
+    ],
+    "pad": 1.2,
+    "video": "hook"
+   },
+   {
+    "id": "rule",
+    "show": "季節が変わっても、選び方は同じ。水に入る深さで、丈を選びます。",
+    "sentences": [
+     "季節が変わっても、選び方は同じ。",
+     "水に入る深さで、タケを選びます。"
+    ],
+    "pad": 0.8
+   },
+   {
+    "id": "depth",
+    "show": "膝まで、腰まで、胸まで。深く入るほど、長い丈を。",
+    "sentences": [
+     "膝まで、腰まで、胸まで。",
+     "深く入るほど、長いタケを。"
+    ],
+    "pad": 0.8
+   },
+   {
+    "id": "three",
+    "show": "股下・腰丈・胸丈。3つの丈から選べます。",
+    "sentences": [
+     "マタシタ、コシタケ、ムネタケ。",
+     "三つのタケから、選べます。"
+    ],
+    "pad": 0.8
+   },
+   {
+    "id": "mesh",
+    "show": "胸まで入る日は、胸丈。中は、インナーメッシュ裏地。",
+    "sentences": [
+     "胸まで入る日は、ムネタケ。",
+     "中は、インナーメッシュ裏地。"
+    ],
+    "pad": 0.8
+   },
+   {
+    "id": "end",
+    "show": "股下・腰丈・胸丈のウェーダー。好評発売中です。",
+    "sentences": [
+     "マタシタ、コシタケ、ムネタケの、ウェーダー。",
+     "好評発売中です。"
+    ],
+    "pad": 2.2
+   }
+  ]
+ },
+ "assets": {
+  "hipw": "stock:hipw-pair",
+  "hw94": "stock:hw94-front",
+  "chest": "stock:chest-front",
+  "fish": "stock:chest-scene-fishing",
+  "mesh": "stock:chest-mesh",
+  "fall": "stock:keiryu-autumn-morning",
+  "logo": "cutout:unizom-logo"
+ },
+ "higgsfield": {
+  "video": {
+   "key": "hook",
+   "prompt": "[SCENE] Late autumn morning at a clear Japanese mountain stream, vertical 9:16 frame. Close shot at water level: crystal-clear shallow water flows over smooth grey river stones, a few red and orange maple leaves drift on the surface, faint mist rises from the water. A bare adult hand in a plain dark sleeve with no markings reaches in from the top of the frame, dips the fingertips into the water, then quickly pulls back with a small flinch, drops of water falling from the fingers.\n[CAMERA] Static low angle just above the water surface, 50mm lens, aperture f/5.6 so the stones and leaves stay clearly readable (no heavy background blur), focus on the hand and water. Real-time speed, no slow-motion.\n[LIGHTING] Cool soft morning light, 6000K, low sun breaking through trees from camera-right, gentle glints on the ripples, slightly hazy air.\n[MATERIALS & TEXTURE] Glassy cold clear water, wet smooth granite stones, crisp fallen maple leaves, natural skin with fine water droplets.\n[COLOR PALETTE] Cold blue-green water, slate grey stones, small accents of crimson and amber leaves. Natural contrast.\n[AUDIO] Natural sounds only: stream murmur, a small splash, distant birds. No music, no voice.\n[AVOID] Logos, text, letters, brand marks, waders, boots, fishing gear, products, people's faces, extra fingers, deformed hands, morphing, camera shake, fisheye distortion, heavy bokeh, snow, ice."
+  },
+  "images": []
+ }
+}
