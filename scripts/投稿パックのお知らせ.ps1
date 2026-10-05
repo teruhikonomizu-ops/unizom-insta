@@ -45,6 +45,8 @@ function Result($mark, $msg) {
 function RunAll([scriptblock]$cmd) {
   $old = $ErrorActionPreference
   $ErrorActionPreference = "Continue"
+  # コマンドが見つからない時に前の終了コードを使い回さない
+  $global:LASTEXITCODE = -1
   try { & $cmd 2>&1 | ForEach-Object { "$_" } }
   finally { $ErrorActionPreference = $old }
 }
@@ -69,15 +71,24 @@ try {
   $env:PYTHONUTF8 = "1"
   $env:PYTHONIOENCODING = "utf-8"
 
+  # 0) 前回の pull --rebase が衝突して途中のまま残っていたら元に戻す（残すと以後の取り込みが毎回失敗する）
+  if ((Test-Path (Join-Path $repo ".git\rebase-merge")) -or (Test-Path (Join-Path $repo ".git\rebase-apply"))) {
+    $null = GitRun rebase --abort
+    Note "途中で止まっていた rebase を取り消した"
+  }
   # 1) 最新を取り込む（他の場所で直した分を拾う）
   $null = GitRun fetch --quiet origin
   $null = GitRun merge --ff-only origin/main
   # 前夜のスタジオが push できずに手元だけにコミットが残っていたら、ここで送る（2026-10-05の再発防止）
+  $pushFail = ""
   $ahead = "$(RunAll { git rev-list --count origin/main..HEAD } | Select-Object -Last 1)".Trim()
   if ($ahead -match '^\d+$' -and [int]$ahead -gt 0) {
-    $null = GitRun pull --rebase --autostash -q
+    if ((GitRun pull --rebase --autostash -q) -ne 0) { $null = GitRun rebase --abort }
     if ((GitRun push -q) -eq 0) { Note "手元だけにあったコミット $ahead 件を push した" }
-    else { Note "手元だけにあるコミット $ahead 件を push できなかった" }
+    else {
+      Note "手元だけにあるコミット $ahead 件を push できなかった"
+      $pushFail = "手元だけにあるコミット $ahead 件を GitHub へ push できなかった（パックがGitHubに無い恐れ）。"
+    }
   }
 
   # 2) その日のパックが既にあるなら作らない
@@ -102,7 +113,8 @@ try {
       if ($studioNote) { $studioNote = " ※夜のスタジオは最後の送信で止まったが、高品質版は出来ていた（" + ($s1 -replace '^\[失敗\]\s*\S+\s+\S+\s*', '') + "）" }
     }
     Note "その日のパックは用意済み($($exists.Name))。作らずに通知だけする。"
-    Result "成功" "その日のパックは用意済み($kind$($exists.Name))$studioNote"
+    if ($pushFail) { Result "失敗" "その日のパックは手元に用意済み($kind$($exists.Name))だが、$pushFail$studioNote" }
+    else { Result "成功" "その日のパックは用意済み($kind$($exists.Name))$studioNote" }
   }
   else {
     Note "パックを作る: $today-$suffix"

@@ -19,6 +19,8 @@ function Note($msg) {
 function RunAll([scriptblock]$cmd) {
   $old = $ErrorActionPreference
   $ErrorActionPreference = "Continue"
+  # コマンドが見つからない時に前の終了コードを使い回さない
+  $global:LASTEXITCODE = -1
   try { & $cmd 2>&1 | ForEach-Object { "$_" } }
   finally { $ErrorActionPreference = $old }
 }
@@ -53,7 +55,8 @@ try {
     $msg = "投稿パックを作った: $pack（高品質版・リール・スタジオ。まだ投稿していない。承認待ち）"
     $null = GitRun -c user.name="unizom-insta bot" -c user.email="teruhiko.nomizu@gmail.com" commit -q -m $msg
     # 夜のあいだにクラウド側のコミット（トークン延長など）が入っていても push できるよう、直前に取り込む
-    $null = GitRun pull --rebase --autostash -q
+    # 衝突したら途中状態で残さず元に戻す（残すと翌週以降の取り込みが毎回失敗する）
+    if ((GitRun pull --rebase --autostash -q) -ne 0) { $null = GitRun rebase --abort }
     if ((GitRun push -q) -eq 0) {
       Note "pushした（火曜07:30の通知で のみさんへ届く）"
     }
