@@ -1,0 +1,18 @@
+{
+  "format": "feed",
+  "cards": [
+    {
+      "src": "raw/1.jpg",
+      "out": "1.jpg",
+      "kicker": "お知らせ",
+      "lines": [
+        "Amazonと",
+        "楽天で販売中"
+      ],
+      "subs": [
+        "お使いのお店でどうぞ"
+      ],
+      "line_size": 96
+    }
+  ]
+}
