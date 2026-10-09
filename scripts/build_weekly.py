@@ -169,7 +169,7 @@ def _card_text(c):
     return c.get("kicker", "") + " ".join(c.get("lines", [])) + " ".join(c.get("subs", []))
 
 
-def pick_product(stock, products, kind, used_ids, text="", need_hit=False, head="", others=""):
+def pick_product(stock, products, kind, used_ids, text="", need_hit=False, head="", others="", cover=False):
     """商品の素材（種類=商品写真／商品動画）を選ぶ。無ければ None。
 
     2026-09-11 のみさん指示「風景だけ流れて商品が1個も出てない。商品もちゃんと出して」。
@@ -181,6 +181,11 @@ def pick_product(stock, products, kind, used_ids, text="", need_hit=False, head=
     head（見出し＝kicker＋lines）で当たったキーワードは2倍に数える（小さい補足文より札の主題を優先）。
     others（他の札の文言）に当たり、この札には当たらない素材は後回しにする
     （ファスナーの札が背面の写真を先に取ってしまい、背中の札に回らなかったため）。
+
+    cover=True は表紙（1枚目）用（2026-10-09 のみさん指摘「メッシュのドアップじゃ何か分からない。
+    メッシュを売ってると思われる」）。主役＝商品の全体写真だけから選ぶ。主役が無い商品の時だけ従来どおり。
+    札（キーワード）に「中」のような他の言葉に紛れる1文字を入れない（「中」が「販売中」に当たり、
+    表紙が裏地のアップになった。2026-10-09に chest-mesh の札から外した。雨・水・肩などは残してよい）。
     """
     def hits(s, t=None):
         ks = [k for k in s.get("キーワード", []) if k]
@@ -192,6 +197,10 @@ def pick_product(stock, products, kind, used_ids, text="", need_hit=False, head=
              if s.get("種類") == kind and s.get("商品") in products and s["id"] not in used_ids]
     if need_hit:
         cands = [s for s in cands if not s.get("主役") and hits(s) > 0]
+    if cover and kind == "商品写真":
+        heroes = [s for s in cands if s.get("主役")]
+        if heroes:
+            cands = heroes
     if not cands:
         return None
 
@@ -256,7 +265,8 @@ def main():
                 if args.reel and i != 1:
                     chosen = pick_product(stock, card_products, "商品動画", used, text, head=head, others=others)
                 if chosen is None:
-                    chosen = pick_product(stock, card_products, "商品写真", used, text, head=head, others=others)
+                    chosen = pick_product(stock, card_products, "商品写真", used, text, head=head, others=others,
+                                          cover=(i == 1))
             else:
                 # 奇数枚目・締めでも、札が商品の特徴（エアメッシュ・背中など）を書いていれば
                 # 風景ではなく、その特徴の寄りの素材にする（風景だと札と絵が食い違うため）
