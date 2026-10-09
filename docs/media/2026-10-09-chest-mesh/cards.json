@@ -1,0 +1,50 @@
+{
+  "format": "feed",
+  "cards": [
+    {
+      "src": "raw/1.jpg",
+      "out": "1.jpg",
+      "kicker": "チェストハイ",
+      "lines": [
+        "メッシュ裏地の",
+        "ウェーダー"
+      ],
+      "subs": [
+        "夏から冬まで",
+        "オールシーズン対応"
+      ],
+      "line_size": 96,
+      "scrim": 1.0,
+      "scrim_height": 0.8
+    },
+    {
+      "src": "raw/2.jpg",
+      "out": "2.jpg",
+      "kicker": "内側",
+      "lines": [
+        "張り付きにくい"
+      ],
+      "subs": [
+        "インナーメッシュ裏地",
+        "汗をかいても肌ざわりよく"
+      ],
+      "line_size": 96
+    },
+    {
+      "src": "raw/3.jpg",
+      "out": "3.jpg",
+      "kicker": "これからの季節",
+      "lines": [
+        "着込んでも",
+        "着脱しやすい"
+      ],
+      "subs": [
+        "H形サスペンダーで",
+        "長さを調整できます"
+      ],
+      "line_size": 116,
+      "scrim": 1.0,
+      "scrim_height": 0.8
+    }
+  ]
+}

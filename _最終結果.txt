@@ -1,1 +1,1 @@
-﻿[成功] 2026-10-06 07:30 その日のパックは用意済み(高品質版・2026-10-06-reel) ※夜の高品質版は作れず、従来の自動リールにした（スタジオの起動スクリプトが途中で止まった: warning: in the working copy of '_お知らせログ.txt', LF will be replaced by CRLF the next time Git touches it）
+﻿[成功] 2026-10-09 07:30 2026-10-09-weekly を作った（未投稿・承認待ち）
