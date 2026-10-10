@@ -36,20 +36,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -o pipefail   # tee を挟んでも本体の失敗を拾う
           opts=""
           [ "${{ inputs.dry_run }}" = "true" ] && opts="--dry-run"
           python3 scripts/cleanup_media.py $opts | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: コミット
-        if: ${{ inputs.dry_run != true }}
+        # 片付けが途中で失敗しても、結果ファイル（[失敗]）だけは必ず送る
+        if: ${{ always() && inputs.dry_run != true }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A docs/media _片付け結果.txt
+          if [ "${{ job.status }}" = "success" ]; then git add -A docs/media _片付け結果.txt; else git checkout -- docs/media 2>/dev/null || true; git add _片付け結果.txt; fi
           if git diff --cached --quiet; then
             echo "変更なし"
           else
-            git commit -q -m "片付け: 投稿済みパックの画像・動画を整理（$(head -1 _片付け結果.txt | cut -c1-60)）"
+            git commit -q -m "片付け: 投稿済みパックの画像・動画を整理（$(head -1 _片付け結果.txt | python3 -c 'import sys;print(sys.stdin.read().strip()[:40])')）"
             for i in 1 2 3; do
               git pull --rebase -q origin main && git push -q origin HEAD:main && break
               echo "push に失敗（${i}回目）。少し待って再試行"; sleep 15
@@ -58,7 +60,7 @@ jobs:
           fi
 
       - name: 結果が [失敗] なら知らせる
-        if: ${{ inputs.dry_run != true }}
+        if: ${{ always() && inputs.dry_run != true }}
         run: |
           head -1 _片付け結果.txt
           if head -1 _片付け結果.txt | grep -q '^\[失敗\]'; then

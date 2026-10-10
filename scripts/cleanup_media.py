@@ -78,8 +78,10 @@ def parse_log(text: str) -> dict:
             permalink = m.group(1)
         if "--dry-run のため、ここで停止した" in line:
             dry = True
-    if media_id:
+    if media_id and pack:
         kind = "posted"
+    elif media_id:
+        kind = "unknown"   # 投稿はしたのにパック名が読めない＝書式が半分変わった疑い（素通りさせない）
     elif dry:
         kind = "dry"
     else:
@@ -102,6 +104,8 @@ def media_files(pack_dir: Path) -> list[Path]:
     """消す対象（画像・動画・音声と、作業用の raw/ など下の階層）。文字ファイルは残す"""
     out = []
     for p in sorted(pack_dir.iterdir()):
+        if p.is_symlink():
+            continue   # リンクの先（stock/ など）を消さない
         if p.is_dir():
             out.append(p)
         elif p.suffix.lower() in MEDIA_EXT:
@@ -178,7 +182,8 @@ def run(dry: bool) -> int:
              "known_posted": 0, "media_dirs": 0, "docs_mb": 0.0, "repo_mb": None}
     notes: list[str] = []
 
-    packs = {p.name: p for p in MEDIA.iterdir() if p.is_dir() and PACK_RE.match(p.name)} if MEDIA.is_dir() else {}
+    packs = {p.name: p for p in MEDIA.iterdir()
+             if p.is_dir() and not p.is_symlink() and PACK_RE.match(p.name)} if MEDIA.is_dir() else {}
     stats["media_dirs"] = len(packs)
     posted = {name: load_posted(d) for name, d in packs.items()}
     known_runs = {p.get("run_id") for v in posted.values() for p in v.get("posts", [])}
@@ -288,6 +293,8 @@ def selftest() -> int:
     check("空打ちを投稿と取り違えない", r["kind"] == "dry")
     r = parse_log("x\t投稿\tT Pack: 2026-10-06-reel\nx\t投稿\tT posted id=1\n")
     check("書式が変わったら unknown になる", r["kind"] == "unknown")
+    r = parse_log("x\t投稿\tT Pack: x\nx\t投稿\tT 投稿した: media_id=123\n")
+    check("パック名が読めない投稿は unknown（素通りさせない）", r["kind"] == "unknown")
 
     now = datetime(2026, 10, 20, tzinfo=timezone.utc)
     check("13日前の投稿は残す", not due_for_cleanup({"posts": [{"posted_at": "2026-10-07T00:00:00Z"}]}, now))
@@ -313,4 +320,14 @@ if __name__ == "__main__":
     ap.add_argument("--dry-run", action="store_true", help="消さずに一覧だけ出す")
     ap.add_argument("--selftest", action="store_true", help="判定部分を壊したデータで試す")
     a = ap.parse_args()
-    sys.exit(selftest() if a.selftest else run(a.dry_run))
+    if a.selftest:
+        sys.exit(selftest())
+    try:
+        sys.exit(run(a.dry_run))
+    except Exception as e:
+        # 途中で止まっても結果ファイルは必ず書く（書かないとボードが10日後まで気づかない）
+        msg = f"[失敗] {datetime.now(JST).strftime('%Y-%m-%d %H:%M')} 途中で止まった: {type(e).__name__}: {e}"[:400]
+        print(msg)
+        if not a.dry_run:
+            RESULT.write_text(msg + "\n", encoding="utf-8")
+        sys.exit(1)
