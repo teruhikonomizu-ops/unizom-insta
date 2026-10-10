@@ -1,0 +1,66 @@
+name: cleanup
+
+# 投稿済みパックの画像・動画を GitHub Pages から片付ける（2026-10-11 新設・のみさん指示）。
+# Pages の公開サイトは 1GB まで（GitHub公式）。投稿後の素材は Instagram 側に写しがあるので要らない。
+# 規則・触らない物は scripts/cleanup_media.py の冒頭が正。
+# 結果は _片付け結果.txt（1行目 [成功]／[警戒]／[失敗]）→ PC が pull するとボードの見張りが読む。
+on:
+  schedule:
+    - cron: "30 18 * * 0"   # 毎週月曜 03:30 JST（PCが寝ていても動く）
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "消さずに一覧だけ出す"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write   # 片付けと結果ファイルのコミット
+  actions: read     # publish の実行ログを読む
+
+concurrency:
+  group: cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 判定部分の自己テスト
+        run: python3 scripts/cleanup_media.py --selftest
+
+      - name: 片付け
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          opts=""
+          [ "${{ inputs.dry_run }}" = "true" ] && opts="--dry-run"
+          python3 scripts/cleanup_media.py $opts | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: コミット
+        if: ${{ inputs.dry_run != true }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs/media _片付け結果.txt
+          if git diff --cached --quiet; then
+            echo "変更なし"
+          else
+            git commit -q -m "片付け: 投稿済みパックの画像・動画を整理（$(head -1 _片付け結果.txt | cut -c1-60)）"
+            for i in 1 2 3; do
+              git pull --rebase -q origin main && git push -q origin HEAD:main && break
+              echo "push に失敗（${i}回目）。少し待って再試行"; sleep 15
+              [ "$i" = "3" ] && { echo "::error::push できなかった"; exit 1; }
+            done
+          fi
+
+      - name: 結果が [失敗] なら知らせる
+        if: ${{ inputs.dry_run != true }}
+        run: |
+          head -1 _片付け結果.txt
+          if head -1 _片付け結果.txt | grep -q '^\[失敗\]'; then
+            echo "::error::$(sed -n 2p _片付け結果.txt)"; exit 1
+          fi
