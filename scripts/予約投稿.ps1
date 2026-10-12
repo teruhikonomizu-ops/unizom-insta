@@ -7,6 +7,9 @@ param([Parameter(Mandatory = $true)][string]$Pack, [string]$Note = "", [switch]$
 # -DryRun＝投稿せずコンテナ作成までで止める試運転（報告ファイル・posted.json は書かない）
 
 $ErrorActionPreference = "Continue"
+# 無人実行（conhost経由）でも gh の出力を化けずに読むため（2026-10-12 別の目の点検で指摘）
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$dispatched = $false
 $repo = Split-Path -Parent $PSScriptRoot
 $report = Join-Path $env:USERPROFILE "OneDrive\デスクトップ\ai記事自動\インスタ\自動投稿\_朝会への報告.txt"
 $resultFile = Join-Path $repo "_予約投稿結果.txt"
@@ -32,13 +35,18 @@ try {
   $dr = if ($DryRun) { "true" } else { "false" }
   gh workflow run publish -R teruhikonomizu-ops/unizom-insta -f "pack=$Pack" -f "dry_run=$dr" 2>&1 | Out-Null
   if ($LASTEXITCODE -ne 0) { throw "投稿ワークフローを起動できなかった（gh の認証かネットを確認）" }
+  if (-not $DryRun) {
+    # 起動した時点で「投稿された可能性あり」の印を先に置く＝この後どこで失敗しても、再実行で二重投稿しない
+    $dispatched = $true
+    [System.IO.File]::WriteAllText((Join-Path $repo "docs\media\$Pack\posted.json"), ('{"pack":"' + $Pack + '","status":"dispatched","at":"' + (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ") + '"}'), (New-Object System.Text.UTF8Encoding $false))
+  }
 
   # 起動した実行を探す（最大2分）
   $runId = $null
   for ($i = 0; $i -lt 12 -and -not $runId; $i++) {
     Start-Sleep -Seconds 10
     $runs = gh run list -R teruhikonomizu-ops/unizom-insta --workflow publish --limit 3 --json databaseId,createdAt | ConvertFrom-Json
-    $runId = ($runs | Where-Object { [datetime]$_.createdAt -gt $before.ToUniversalTime().AddSeconds(-30) } | Select-Object -First 1).databaseId
+    $runId = ($runs | Where-Object { ([datetime]$_.createdAt).ToUniversalTime() -gt $before.ToUniversalTime().AddSeconds(-30) } | Select-Object -First 1).databaseId
   }
   if (-not $runId) { throw "起動した実行が見つからない" }
 
@@ -55,7 +63,7 @@ try {
 
   if ($DryRun) { Result "成功" "試運転OK（投稿はしていない・run $runId）"; exit 0 }
   $log = gh run view $runId -R teruhikonomizu-ops/unizom-insta --log 2>$null
-  $url = ($log | Select-String -Pattern "公開URL: (\S+)" | Select-Object -Last 1).Matches.Groups[1].Value
+  $url = ($log | Select-String -Pattern "(https://www\.instagram\.com/\S+)" | Select-Object -Last 1).Matches.Groups[1].Value
   $mid = ($log | Select-String -Pattern "media_id=(\d+)" | Select-Object -Last 1).Matches.Groups[1].Value
   if (-not $url) { throw "投稿は成功扱いだが公開URLがログに無い（run $runId）＝Instagramで目視が要る" }
 
@@ -72,6 +80,11 @@ try {
 }
 catch {
   $msg = $_.Exception.Message
+  if ($dispatched) {
+    Report ("[失敗] {0} {1} 要確認＝投稿は起動済みで、投稿された可能性あり: {2}。🔴出し直す前にInstagramのプロフィールで投稿の有無を目で確かめる（無ければ docs/media/{1}/posted.json を消してから「インスタ出して」）" -f (Get-Date -Format "yyyy-MM-dd"), $Pack, $msg)
+    Result "失敗" ("要確認（投稿された可能性あり）: " + $msg)
+    exit 1
+  }
   Report ("[失敗] {0} {1} 予約投稿できなかった: {2}（PCのClaudeに「インスタ出して」で手で出せる）" -f (Get-Date -Format "yyyy-MM-dd"), $Pack, $msg)
   Result "失敗" $msg
   exit 1
