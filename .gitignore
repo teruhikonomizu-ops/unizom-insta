@@ -3,3 +3,4 @@ __pycache__/
 work/
 .env
 *.token
+_予約投稿結果.txt
