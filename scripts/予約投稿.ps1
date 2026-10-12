@@ -3,8 +3,9 @@
 #   タスクスケジューラの1回きりのタスクから conhost --headless で呼ぶ（2026-10-12 プライム感謝祭で新設）。
 #   結果＝リポジトリ直下 _予約投稿結果.txt の1行目（[成功]/[失敗]）＋ OneDrive の _朝会への報告.txt を [投稿済み]/[失敗] に書き替える。
 #   🔴 承認の無いパックをここに渡さない（予約するのは のみさんがチャットでOKした物だけ）。
-param([Parameter(Mandatory = $true)][string]$Pack, [string]$Note = "", [switch]$DryRun)
+param([Parameter(Mandatory = $true)][string]$Pack, [string]$Note = "", [switch]$DryRun, [string]$NotAfter = "")
 # -DryRun＝投稿せずコンテナ作成までで止める試運転（報告ファイル・posted.json は書かない）
+# -NotAfter "yyyy-MM-dd HH:mm"＝この時刻を過ぎていたら投稿せず[失敗]で知らせる（PCが止まっていて後から起動した時に、何日も遅れて公開しない・2026-10-12 総点検）
 
 $ErrorActionPreference = "Continue"
 # 無人実行（conhost経由）でも gh の出力を化けずに読むため（2026-10-12 別の目の点検で指摘）
@@ -27,6 +28,10 @@ function Report($first) {
 
 try {
   Set-Location $repo
+  if ($NotAfter -and -not $DryRun) {
+    $limit = [datetime]::ParseExact($NotAfter, "yyyy-MM-dd HH:mm", [System.Globalization.CultureInfo]::InvariantCulture)
+    if ((Get-Date) -gt $limit) { throw "予定の時刻を過ぎていた（期限 $NotAfter）ので投稿しなかった。PCが止まっていた可能性" }
+  }
   git pull -q --ff-only 2>$null | Out-Null
   if (-not (Test-Path (Join-Path $repo "docs\media\$Pack\1.mp4"))) { throw "パックが無い: docs/media/$Pack" }
   if (Test-Path (Join-Path $repo "docs\media\$Pack\posted.json")) { throw "既に投稿済みの印がある（二重投稿しない）" }

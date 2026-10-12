@@ -46,6 +46,14 @@ try {
   $null = GitRun merge --ff-only origin/main
 
   $pack = (Get-Date).AddDays(1).ToString("yyyy-MM-dd") + "-reel"
+  # その日のパックが既にある（感謝祭など のみさんと手で作った物）＝作らずに見送る。失敗ではないので[成功]と書く
+  #（2026-10-12 総点検: 「既にある」で[失敗]になり、翌週まで名札が赤＝誤報になっていた）
+  if (Test-Path (Join-Path $repo "docs\media\$pack")) {
+    Note "その日のパックは既にある（$pack）＝高品質版は作らない"
+    $line = "[成功] {0} {1} は既に用意済みのため制作を見送り（クレジットは使っていない）" -f (Get-Date -Format "yyyy-MM-dd HH:mm"), $pack
+    [System.IO.File]::WriteAllText((Join-Path $repo "_スタジオ結果.txt"), $line + "`r`n", (New-Object System.Text.UTF8Encoding $true))
+    exit 0
+  }
   Note "高品質版を作る: $pack"
   $out = @(RunAll { python (Join-Path $repo "scripts\studio_reel.py") $pack })
   $code = $LASTEXITCODE
