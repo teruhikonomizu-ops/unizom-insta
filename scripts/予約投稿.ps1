@@ -28,11 +28,16 @@ function Report($first) {
 
 try {
   Set-Location $repo
+  git pull -q --ff-only 2>$null | Out-Null
+  $expired = $false
   if ($NotAfter -and -not $DryRun) {
     $limit = [datetime]::ParseExact($NotAfter, "yyyy-MM-dd HH:mm", [System.Globalization.CultureInfo]::InvariantCulture)
-    if ((Get-Date) -gt $limit) { throw "予定の時刻を過ぎていた（期限 $NotAfter）ので投稿しなかった。PCが止まっていた可能性" }
+    $expired = ((Get-Date) -gt $limit)
   }
-  git pull -q --ff-only 2>$null | Out-Null
+  # 期限を過ぎた遅れた実行（使い終わった1回きりのタスクが後から動いた等）で、既に投稿済みなら何も書かずに終わる
+  #＝前回の結果・朝会への報告を[失敗]で上書きしない（2026-10-12 総点検）。時刻どおりの実行で印がある時は従来どおり[失敗]で知らせる
+  if ($expired -and (Test-Path (Join-Path $repo "docs\media\$Pack\posted.json"))) { exit 0 }
+  if ($expired) { throw "予定の時刻を過ぎていた（期限 $NotAfter）ので投稿しなかった。PCが止まっていた可能性" }
   if (-not (Test-Path (Join-Path $repo "docs\media\$Pack\1.mp4"))) { throw "パックが無い: docs/media/$Pack" }
   if (Test-Path (Join-Path $repo "docs\media\$Pack\posted.json")) { throw "既に投稿済みの印がある（二重投稿しない）" }
 
