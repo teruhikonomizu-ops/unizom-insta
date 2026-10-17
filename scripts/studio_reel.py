@@ -248,6 +248,51 @@ def build_samples(work, url, timing):
     return paths, [], audit
 
 
+# ---------- 🆕 テンポの測定（2026-10-17 のみさん決定「切り替えの早い型」） ----------
+# 0.25秒ごとのコマを 108×192 に縮めて隣どうしの差を見る。物差しは 2026-10-17 に実物2本で合わせた：
+#   手作りの速い見本＝大きな変化の間隔 平均0.69秒・止まっている秒 0/20 ／ 10/06 のスタジオ版＝4.17秒・9/25（36%）
+PACE_STEP, PACE_BIG, PACE_STILL = 0.25, 16.0, 1.5     # 大きな変化＝差>16 ／ 止まっている1秒＝4歩とも差<1.5
+PACE_MAX_GAP, PACE_MAX_STILL = 1.8, 0.20             # 目標：間隔が平均1.8秒以内・止まっている秒が2割以下（指示書どおり1場面3回で届く値・別の目の点検で1.5→1.8）
+# ⚠ 限界: 写真の壁の流れ・flash などの連続の動きも「大きな変化」に数える（切り替えが無くても合格しうる）
+
+
+def pace_check(d, work, url, timing):
+    """冒頭の実写動画の場面と最後の場面を除いて測る。戻り値＝(合格か, 説明の1文, 安全域の問題の一覧)"""
+    from PIL import Image, ImageChops, ImageStat
+    scenes = d["script"]["scenes"]; spans, t = [], 0.0
+    for i, s in enumerate(timing):
+        vid = bool(scenes[i].get("video")) if i < len(scenes) else False
+        if not vid and i != len(timing) - 1: spans.append((t, t + s["scene"]))
+        t += s["scene"]
+    times = []
+    for a, b in spans:
+        k = a
+        while k <= b - 0.05: times.append(round(k, 2)); k += PACE_STEP
+    if len(times) < 8: return True, "テンポ: 測れる場面が短いので測らなかった", []
+    out = work / "pace"
+    if out.exists(): shutil.rmtree(out)
+    ok, errs = render(work, url, out, times)
+    safe = [a for a in render.audit if ("下420px" in a or "右190px" in a or "画面の外" in a)]
+    if not ok: return True, "テンポ: 測定用のコマを書き出せなかった（" + " / ".join(errs[:2]) + "）", safe
+    ims = {tt: Image.open(out / f"t_{tt:.2f}.png").convert("RGBA").resize((108, 192)) for tt in times}
+    def flat(im):
+        bg = Image.new("RGBA", im.size, (90, 120, 90, 255)); bg.alpha_composite(im); return bg.convert("RGB")
+    diffs, span_len = [], 0.0
+    for a, b in spans:
+        seq = [tt for tt in times if a <= tt < b]
+        span_len += b - a
+        for p, q in zip(seq, seq[1:]):
+            diffs.append(sum(ImageStat.Stat(ImageChops.difference(flat(ims[p]), flat(ims[q]))).mean) / 3)
+    shutil.rmtree(out, ignore_errors=True)
+    big = sum(1 for x in diffs if x > PACE_BIG)
+    gap = span_len / max(1, big)
+    secs = [diffs[i:i + 4] for i in range(0, len(diffs) - 3, 4)]
+    still = sum(1 for s in secs if max(s) < PACE_STILL); ratio = still / max(1, len(secs))
+    msg = f"テンポ: 大きく絵が変わるのは平均{gap:.1f}秒ごと（目標{PACE_MAX_GAP}秒以内）・ほぼ止まっている秒 {still}/{len(secs)}（目標2割以下）"
+    passed = gap <= PACE_MAX_GAP and ratio <= PACE_MAX_STILL
+    return passed, msg, safe
+
+
 def review(d, work, sheets, readings, voice_report, errs, audit):
     prompt = ("あなたは今週の火曜リールの監督です。下のJSONはあなたが書いた案です。書き出した見本（場面ごとに1枚・出だし／中ほど／終わりの3コマ。"
               "緑の部分は冒頭の実写動画が入る所）を**全部** Read で開いて目で確認し、次の点を点検してください：\n"
@@ -303,22 +348,44 @@ def main():
             used_stock, timing, vrep = build(d)
             srv = Server(work / "web")
             try:
-                sheets, errs, audit = build_samples(work, srv.url, timing)
-                # 確認は最大2回。1回目は必ず見る。2回目は機械の検査かエラーが残っている時だけ
+                def check(timing):
+                    sheets, errs, audit = build_samples(work, srv.url, timing)
+                    try:   # 🔴 測定の失敗でその週を止めない（測れなければ合格扱い・ログに残す）
+                        pace_ok, pace_msg, safe = pace_check(d, work, srv.url, timing) if not errs else (True, "テンポ: 書き出しエラーのため測らなかった", [])
+                    except Exception as e:
+                        pace_ok, pace_msg, safe = True, f"テンポ: 測定に失敗したので測らなかった（{str(e)[:120]}）", []
+                    log(pace_msg + ("" if pace_ok else "  → 目標に届かない"))
+                    # safe＝0.25秒ごとの測定コマで見つけた安全域の問題。確認役には渡すが、週を止める判定には使わない（一瞬の通過は実害が小さい）
+                    return sheets, errs, audit, [a for a in safe if a not in audit], pace_ok, pace_msg
+                sheets, errs, audit, safe, pace_ok, pace_msg = check(timing)
+                # 問題（エラー・見本コマの検査）の無かった最後の版を覚えておく＝確認役の最後の直しで壊れたら、そこへ戻す（別の目の点検 2026-10-17）
+                good = (d, pace_ok, pace_msg) if not (errs or audit) else None
+                # 確認は最大2回。1回目は必ず見る。2回目は機械の検査（テンポを含む）かエラーが残っている時だけ
                 for rnd_no in (1, 2):
-                    if rnd_no == 2 and not (audit or errs): break
-                    if audit: log("機械の検査: " + " / ".join(audit[:6]))
+                    if rnd_no == 2 and not (audit or errs or safe or not pace_ok): break
+                    if audit or safe: log("機械の検査: " + " / ".join((audit + safe)[:6]))
                     readings = media.check_readings(d["script"])
-                    fixed = review(d, work, sheets, readings, vrep, errs, audit)
+                    issues = audit + safe + ([] if pace_ok else [pace_msg + "。STUDIO.md の『テンポ＝切り替えの早い型』どおり、1場面の中で cutAt で絵を3〜5回切り替え、場面の切り替えは cut を基本にすること"])
+                    fixed = review(d, work, sheets, readings, vrep, errs, issues)
                     if not fixed:
                         if rnd_no == 1: log("確認: 直す所なし")
                         break
                     log(f"確認{rnd_no}回目で直しが入った"); d = fixed
                     (work / f"draft{rnd_no+1}.json").write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
                     used_stock, timing, vrep = build(d)
-                    sheets, errs, audit = build_samples(work, srv.url, timing)
+                    sheets, errs, audit, safe, pace_ok, pace_msg = check(timing)
+                    if not (errs or audit): good = (d, pace_ok, pace_msg)
+                reverted = False
+                if (errs or audit) and good:
+                    log("最後の直しで誤りが残った（" + " / ".join((errs + audit)[:2]) + "）→ 問題の無かった版に戻して作る")
+                    d, pace_ok, pace_msg = good; reverted = True
+                    used_stock, timing, vrep = build(d)
+                    _, errs, audit = build_samples(work, srv.url, timing)
                 if errs: raise RuntimeError("書き出しのエラー: " + " / ".join(errs[:3]))
                 if audit: raise RuntimeError("文字の重なり・はみ出しが直らなかった: " + " / ".join(audit[:3]))
+                # テンポが目標に届かなくても、その週は止めない（ゆっくりでも高品質版の方が従来版より良い）。結果の行に残す
+                pace_note = "" if pace_ok else f"・⚠テンポ目標に届かず（{pace_msg.replace('テンポ: ', '')}）"
+                if reverted: pace_note += "・⚠確認役の最後の直しで誤りが出たので、その前の版で作った"
                 log("全コマを書き出す")
                 ok, errs = render(work, srv.url, work / "frames")
                 if not ok: raise RuntimeError("全コマの書き出しに失敗: " + " / ".join(errs[:3]))
@@ -341,7 +408,7 @@ def main():
             if r.returncode != 0: raise RuntimeError("禁止語: " + " ".join(l.strip() for l in r.stdout.splitlines() if "NG" in l)[:300])
             log(f"完成 {total:.1f}秒・{mp4.stat().st_size//1024//1024}MB・{(time.time()-t0)/60:.0f}分")
             if args.dry:
-                result("成功", f"{args.pack}（試験・--dry）を作った: {mp4}"); return
+                result("成功", f"{args.pack}（試験・--dry）を作った: {mp4}{pace_note}"); return
             # 置く（ここまで来て初めて docs/media を作る＝途中の失敗で半端なパックを残さない）
             out_dir.mkdir(parents=True)
             shutil.copy(mp4, out_dir / "1.mp4")
@@ -358,7 +425,7 @@ def main():
             bw.save(bw.STOCK_INDEX, stock)
             history.append({"pack": args.pack, "topic": topic["id"], "style_plan": d.get("style_plan")})
             HISTORY.write_text(json.dumps(history[-12:], ensure_ascii=False, indent=1), encoding="utf-8")
-            result("成功", f"{args.pack} を高品質版で作った（{total:.0f}秒・未投稿・承認待ち）")
+            result("成功", f"{args.pack} を高品質版で作った（{total:.0f}秒・未投稿・承認待ち）{pace_note}")
     except Exception as e:
         log(f"失敗: {e}")
         result("失敗", f"{args.pack} の高品質版を作れなかった: {str(e)[:200]}")

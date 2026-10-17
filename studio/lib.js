@@ -117,7 +117,7 @@ function leader(pts, a, color='#fff', w=4){ if(a<=0) return; g.save(); g.globalA
 // ---- 画像（実写の切り抜き・写真）----
 function drawImg(key, cx, cy, h, a=1, rot=0){ const im=IMG[key]; if(!im||a<=0) return; const w=h*im.width/im.height; g.save(); g.globalAlpha=a; g.translate(cx,cy); g.rotate(rot); g.drawImage(im,-w/2,-h/2,w,h); g.restore(); }
 function coverImg(key, zoom=1, ox=0, oy=0){  // 画面いっぱいに敷く（ぼかさない）
-  const im=IMG[key]; const s=Math.max(W/im.width,H/im.height)*zoom; const w=im.width*s,h=im.height*s; g.drawImage(im,540-w/2+ox,960-h/2+oy,w,h); }
+  const im=IMG[key]; if(!im) return; const s=Math.max(W/im.width,H/im.height)*zoom; const w=im.width*s,h=im.height*s; g.drawImage(im,540-w/2+ox,960-h/2+oy,w,h); }   // 無いキーでも止めない（2026-10-17）
 function photoCard(key, cx, cy, w, a=1, rot=0){  // 写真を白フチのカードで見せる（ぼかし背景の代わり）
   const im=IMG[key]; if(!im||a<=0) return; const h=w*im.height/im.width; g.save(); g.globalAlpha=a; g.translate(cx,cy); g.rotate(rot);
   g.shadowColor='rgba(0,0,0,.45)'; g.shadowBlur=40; g.shadowOffsetY=16; g.fillStyle='#fff'; g.fillRect(-w/2-18,-h/2-18,w+36,h+36);
@@ -164,7 +164,49 @@ function slab(pts, th, top, side, deco){ g.fillStyle=side; fillPts(shift(pts,0,t
 function arrow(x1,y1,x2,y2,color=RED,w=10,a=1){ if(a<=0) return; g.save(); g.globalAlpha=a; g.strokeStyle=color; g.fillStyle=color; g.lineWidth=w; g.beginPath(); g.moveTo(x1,y1); g.lineTo(x2,y2); g.stroke();
   const an=Math.atan2(y2-y1,x2-x1); g.beginPath(); g.moveTo(x2+Math.cos(an)*w*2,y2+Math.sin(an)*w*2); g.lineTo(x2+Math.cos(an+2.4)*w*2.4,y2+Math.sin(an+2.4)*w*2.4); g.lineTo(x2+Math.cos(an-2.4)*w*2.4,y2+Math.sin(an-2.4)*w*2.4); g.closePath(); g.fill(); g.restore(); }
 
-// ---- 場面の切り替え（type: diag / iris / up / left / fade） ----
+// ---- 🆕 切り替えの早い型の部品（2026-10-17 のみさん決定「リールは切り替えが早い方がいい」） ----
+// 1場面の中で絵を何回も切り替えるための部品。どれも t だけで決まる（どのコマから描いても同じ絵）。
+// cutAt(t, [0,1.1,2.3], d) → [区切りの番号, その区切りの中の秒, その区切りの長さ]
+function cutAt(t, times, d){ times=[...times].sort((a,b)=>a-b); let i=0; for(let k=0;k<times.length;k++) if(t>=times[k]) i=k;   // 昇順に並べ直す（mk[1] が小さい時に区切りが消えないように）
+  const st=times[i], en=(i+1<times.length?times[i+1]:(d||st+1)); return [i, t-st, Math.max(0.01,en-st)]; }
+// 写真を矩形いっぱいに切り抜いて描く（ぼかさない）
+function drawCover(key, x, y, w, h, zoom=1){ const im=IMG[key]; if(!im) return; const s=Math.max(w/im.width,h/im.height)*zoom;
+  const sw=w/s, sh=h/s, sx=(im.width-sw)/2, sy=(im.height-sh)/2; g.drawImage(im,sx,sy,sw,sh,x,y,w,h); }
+// 数え上げ（t0〜t1 の間に from→to）
+function countUp(t, t0, t1, to, from=0){ return Math.round(lerp(from,to,eo(seg(t,t0,t1)))); }
+// 斜めの札に大きな一語（左端 x・ベースライン y）。幅は 820px に収める
+function wordBox(txt, x, y, sz=150, a=1, bg=RED, fg='#fff'){
+  if(a<=0) return; const s=fitText(txt,760,sz); g.save(); g.globalAlpha=a; g.font=font(s);
+  const w=g.measureText(txt).width+s*0.44, h=s*1.22;
+  g.translate(x, y); g.transform(1,0,-0.14,1,0,0);
+  g.shadowColor='rgba(0,0,0,.35)'; g.shadowBlur=30; g.shadowOffsetY=12; g.fillStyle=bg; roundRect(0,-h*0.82,w,h,16); g.fill();
+  g.shadowColor='transparent'; g.fillStyle=fg; g.textBaseline='alphabetic'; g.fillText(txt, s*0.22, 0); g.restore(); }
+// 検索窓に困りごとを打ち込む（つかみ）。t0 から cps 文字/秒。幅 830px（x=70〜900）
+function searchBar(txt, y, t, t0=0.1, cps=14, a=1){
+  if(a<=0) return; const n=Math.min([...txt].length, Math.max(0, Math.floor((t-t0)*cps))), shown=[...txt].slice(0,n).join('');
+  g.save(); g.globalAlpha=a; g.fillStyle='rgba(20,20,24,.72)'; roundRect(70,y-60,830,120,60); g.fill();
+  g.strokeStyle='rgba(255,255,255,.35)'; g.lineWidth=3; roundRect(70,y-60,830,120,60); g.stroke();
+  const s=fitText(txt,640,50,700); g.font=font(s,700); g.fillStyle='#fff'; g.textBaseline='middle'; g.textAlign='left';
+  if(shown) g.fillText(shown,120,y); const cx=120+g.measureText(shown).width+6;
+  if(Math.floor(t*4)%2===0 || n<[...txt].length){ g.fillStyle=RED; g.fillRect(cx,y-28,5,56); }
+  g.fillStyle=RED; g.beginPath(); g.arc(840,y,40,0,7); g.fill();
+  g.strokeStyle='#fff'; g.lineWidth=6; g.lineCap='round'; g.beginPath(); g.moveTo(822,y); g.lineTo(856,y); g.moveTo(842,y-14); g.lineTo(856,y); g.lineTo(842,y+14); g.stroke();
+  g.restore(); }
+// 一語ずつ畳み掛け：items=[{img:'scene1', word:'田んぼ'}, …] を t0 から each 秒ずつ（写真は画面いっぱい・語は斜めの札）
+function rush(t, t0, items, each=0.3, y=900){
+  const k=Math.floor((t-t0)/each); if(k<0||k>=items.length) return false;
+  const it=items[k], lt=t-t0-k*each; coverImg(it.img, 1+0.08*clamp(lt/each)); wordBox(it.word, 70, y, it.sz||150, 1, k%2?INK:RED); return true; }
+// 写真の壁：keys の写真をタイルで並べ、斜めに流す（p=0→1 で流れる）
+function photoWall(keys, p, a=1){
+  if(a<=0||!keys.length) return; const cols=3, tw=400, th=290, gap=18, rows=Math.ceil(14/cols)+1;
+  g.save(); g.globalAlpha=a; g.translate(540,960); g.rotate(-0.09); g.translate(-540,-960+lerp(260,-420,eio(p)));
+  for(let r=0;r<rows*2;r++) for(let c=0;c<cols;c++){ const k=keys[(r*cols+c)%keys.length]; const x=-110+c*(tw+gap)+(r%2)*60, y=-300+r*(th+gap);
+    g.save(); roundRect(x,y,tw,th,14); g.clip(); drawCover(k,x,y,tw,th); g.restore(); }
+  g.restore(); }
+// 白く光るすぱっと切り替え（at 秒から dur 秒）
+function flash(t, at, dur=0.1){ const p=seg(t,at,at+dur); if(p>0&&p<1){ g.save(); g.globalAlpha=(1-p)*0.75; g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.restore(); } }
+
+// ---- 場面の切り替え（type: cut / diag / iris / up / left / fade）。cut＝すぱっと（切り替えの早い型の基本） ----
 function wipeClip(type, p, cx=540, cy=960){ g.beginPath();
   if(type==='diag'){ const x=lerp(-600,W+600,eio(p)); g.moveTo(x-600,0); g.lineTo(x+300,0); g.lineTo(x-300,H); g.lineTo(x-1200,H); g.closePath(); g.rect(-2000,0,Math.max(0,x-600+2000),H); }
   else if(type==='iris'){ g.arc(cx,cy, eio(p)*2300, 0, 7); }
@@ -179,9 +221,10 @@ window.render = function(T){
   let i = SC.findIndex(s=>T>=s.start && T<s.start+s.dur); if(i<0) i=SC.length-1;
   const s=SC[i], t=T-s.start;
   if(!SCN[s.id]) throw new Error('場面の関数が無い: '+s.id);
-  if(i>0 && t<TR){
+  const ty=TRT[s.id]||'fade';
+  if(i>0 && t<TR && ty!=='cut'){
     const pv=SC[i-1]; g.save(); SCN[pv.id](t+pv.dur, pv.dur, pv.mk); g.restore();
-    const p=t/TR, ty=TRT[s.id]||'fade';
+    const p=t/TR;
     g.save();
     if(ty==='fade'){ g.globalAlpha=eio(p); } else { wipeClip(ty,p); g.clearRect(0,0,W,H); }
     SCN[s.id](t, s.dur, s.mk); g.restore();

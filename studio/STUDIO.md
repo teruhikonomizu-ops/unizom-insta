@@ -15,6 +15,30 @@
 4. **背景をぼかして素材を収めない**（のみさん指摘「背景がぼやける」）。写真は `photoCard` か `coverImg`（画面いっぱい・ぼかさない）で見せる。
 5. 冒頭3秒で「現場の困りごと」を言い切る（フック）。最後の場面は **「好評発売中」＋「Amazon・楽天で販売中」＋実物ロゴ**（商品のネタのとき）。
 
+## 🆕 テンポ＝「切り替えの早い型」（2026-10-17 のみさん決定・火曜リールの標準）
+のみさん「リールは切り替えが早い方が刺激になって見に行く。ゆっくりだとのんびりして良くない」。**お手本の scenes.js（9/29）はテンポが遅い＝形だけ参考にし、テンポはこの節を優先する。**
+1. **絵は平均1.2秒以内で変える。** 1場面（読み上げ1〜2文・4〜6秒）の中で、絵（写真・切り抜き・図・背景の色）を**3〜5回**切り替える。
+   `const [k,lt,ld]=cutAt(t,[0,1.1,2.2,3.3],d)` で区切り、`k` ごとに別の絵を描く（`mk[1]` の前後で区切ると声と合う）。
+2. **止めない。** どのコマでも何か動かす（写真はゆっくりズーム・横移動、文字の出現、数え上げ、`photoWall` の流れ）。
+3. **冒頭0〜1秒**は `searchBar('困りごとの一言', 760, t)`（打ち込み）か大きな一語。**最初のコマから文字と絵が見えること**（表紙になる）。冒頭の実写動画の上でもよい。
+4. **1回は「一語ずつ畳み掛け」**：`rush(t, t0, [{img:'<assetsのキー>',word:'田んぼ'},…])`（0.3秒×3〜5語・使う場面の写真）。語は2〜4文字。
+   `rush` は自分の時間の外では何も描かず false を返す＝**前後の絵は自分で描く**（`if(!rush(…)){ …別の絵… }`）。例のキー名（scene1 等）はそのまま使わず、assets に書いたキーを使う。
+5. 数字は `countUp(t,t0,t1,目標)` で数え上げる。**大事な数字・サイズ・締めの文字は1秒以上同じ所に残す**（読み切れるように）。
+6. 場面と場面の切り替えは **`cut`（すぱっと）が基本**。wipe系（diag/iris/up/left）は2回に1回まで。区切りの瞬間に `flash(t,at)` を入れてもよい。
+7. 字幕（caption）は今まで通り場面の間ずっと出す（帯の位置は動かさない）。見出しは短く（字幕と同じ文を見出しにしない）。
+8. 最後の場面（締め）は落ち着いてよい（好評発売中・販売先・実物ロゴを2秒以上見せる）。
+9. 🔴 **機械がテンポを測る**（0.25秒ごとのコマ。冒頭の実写動画の場面と最後の場面は除く）。目標＝**大きく絵が変わる間隔が平均1.8秒以内・ほぼ止まっている秒が2割以下**。届かなければ確認役が直す。
+```js
+// 例：1場面の中で4回絵を変える（写真→切り抜き→図→数字）
+function sHeel(t, d, mk){ const [k,lt,ld]=cutAt(t,[0,1.1,2.2,mk[1]||3.3],d);
+  if(k===0){ coverImg('scene1', 1+0.06*lt/ld); }
+  else if(k===1){ bgStudio(); drawImg('heel',540,880,760,eo(seg(lt,0,.25)),lerp(.05,0,eo(lt/ld))); }
+  else if(k===2){ bgCream(); photoCard('mesh',540,860,760,1,-0.03); }
+  else { g.fillStyle=RED; g.fillRect(0,0,W,H); headline(['かかと 約'+countUp(lt,.1,.6,8)+'mm'],820,1,140); }
+  kicker('深型ヒールカップ',250,1); caption(['かかとを包み込み、','パカパカ浮きを抑えます。'],capA(t,d)); }
+window.TRANSITIONS = {heel:'cut'};
+```
+
 ## 🔴 AIに描かせない物（Higgsfieldにもコードにも）
 - **商品本体・ロゴ・パッケージの印刷・サイズ表記**は、実写の素材（下の素材一覧）を置く。Higgsfieldの動画・画像に**商品を写さない**
   （写すのは現場・背景・人物の手足・一般的な無地の長靴など）。プロンプトに「logos, text, letters, brand marks」を AVOID で必ず書く。
@@ -66,13 +90,15 @@ function sToe(t, d, mk){ const s2=mk[1]; bgBlueprint(); /* …絵… */ kicker('
   headline(['極厚 約7mm'],420,eo(seg(t,0.35,0.7)),116); underline(300,780,452,seg(t,0.6,1.0));
   caption(['つま先は約7mmの極厚。','すき間を埋めて、前滑りを抑えます。'], capA(t,d)); }
 window.SCENES = {hook:sHook, toe:sToe};
-window.TRANSITIONS = {toe:'diag'};   // diag / iris / up / left / fade（場面ごとに変える）
+window.TRANSITIONS = {toe:'cut'};   // cut（すぱっと・基本）/ diag / iris / up / left / fade
 ```
 - `t`=場面内の秒、`d`=場面の長さ、`mk`=各文の読み始め秒の配列。場面関数は `t>d` でも破綻しないこと（切り替え中に呼ばれる）。
 - 画像は `IMG.<assetsのキー>`。`drawImg(key,cx,cy,h,a,rot)`／`coverImg(key,zoom)`／`photoCard(key,cx,cy,w,a,rot)`／`contactShadow`／`sweep`。
 - 使える部品（lib.js）：`clamp lerp eo eio back seg rnd font fitText roundRect kicker headline underline caption capA label leader
   drawImg coverImg photoCard contactShadow sweep bgBlueprint bgStudio bgKraft bgCream topShade bez pathPts polyLen drawPartial fillPts
   shift scalePts wobble crayon iso slab arrow`。定数 `W H RED INK g`（CanvasRenderingContext2D）。
+  🆕 切り替えの早い型の部品：`cutAt(t,区切りの秒の配列,d)`・`drawCover(key,x,y,w,h,zoom)`・`countUp(t,t0,t1,to,from)`・`wordBox(txt,x,y,sz,a,bg)`・
+  `searchBar(txt,y,t,t0,cps,a)`・`rush(t,t0,items,each,y)`・`photoWall(keys,p,a)`・`flash(t,at,dur)`。切り替えの種類に `cut`（すぱっと）。
 - 文字を枠に入れる時は `fitText(txt,最大幅,既定サイズ)` で**はみ出しを防ぐ**（2026-09-29 サイズ札のcmがはみ出した）。
 - 外部の画像・フォント・通信は使わない。`Math.random` は使わない（毎コマ同じ絵になるよう `rnd(seed)` を使う）。
 - 最後の0.6秒の暗転は共通部品がやる（場面側で暗転しない）。
