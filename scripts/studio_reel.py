@@ -7,7 +7,8 @@
 🔴 無人のClaudeには「文章を書く」「画像を見る」「Higgsfieldで決まった数だけ作る」以外をさせない。
    - 書き手   : claude -p --tools ""（道具なし）→ JSONの文章だけ返す
    - 確認     : claude -p --tools Read（見本コマ一覧を見るだけ）
-   - 生成係   : claude -p で Higgsfield の生成3機能だけ許可（動画1本・画像2枚まで＝上限60クレジット・のみさん決定）
+   - 生成係   : claude -p で Higgsfield の生成3機能だけ許可（動画1本・画像2枚まで＝上限84クレジット＝Seedance 2.5 の動画80＋画像2×2。
+                2026-10-18 のみさん決定「より良いモデルに変えていく」で 2.0（上限60）から切り替え）
    それ以外（声・書き出し・音・合成・禁止語チェック・公開）はこのプログラムが決まった手順で行う。
 
 使い方: python scripts/studio_reel.py <パック名> [--topic <id>] [--dry] [--hf-from <フォルダ>]
@@ -156,13 +157,16 @@ def higgsfield(d, work, hf_from=None):
     spec = []
     for kind, key, prompt in jobs:
         if kind == "video":
-            spec.append({"key": key, "tool": "generate_video", "params": {"model": "seedance_2_0", "aspect_ratio": "9:16", "duration": 5,
-                         "resolution": "1080p", "mode": "std", "generate_audio": True, "count": 1, "use_unlim": False, "prompt": prompt}})
+            # 主力の動画モデルは skills/higgsfield/SKILL.md の「モデル早見」が正。変えたらここも直す（2026-10-18〜 seedance_2_5）
+            spec.append({"key": key, "tool": "generate_video", "params": {"model": "seedance_2_5", "aspect_ratio": "9:16", "duration": 5,
+                         "resolution": "1080p", "generate_audio": True, "count": 1, "use_unlim": False, "prompt": prompt}})
         else:
             spec.append({"key": key, "tool": "generate_image", "params": {"model": "nano_banana_pro", "aspect_ratio": "9:16",
                          "resolution": "2k", "count": 1, "use_unlim": False, "prompt": prompt}})
     prompt = ("あなたはHiggsfieldの生成係です。下の一覧を、書いてあるパラメータのまま1件につき1回だけ生成してください。"
               "パラメータを変えない・件数を増やさない・作り直さない。失敗した件は作り直さずに失敗として報告する。\n"
+              "ただし生成せずに「プリセットのお勧め（preset_recommendation）」が返った時だけは、まだ作られていないので、"
+              "同じパラメータに retry_literal_with の declined_preset_id を足して1回だけ出し直す（作り直しには数えない）。\n"
               "全部を出したら jobs_wait で全件が終わるまで待つ（最大30回まで呼んでよい）。\n"
               "最後に JSON だけを出力: {\"results\": {\"<key>\": \"<result_url>\"}, \"failed\": [\"<key>\"]}\n\n```json\n"
               + json.dumps(spec, ensure_ascii=False, indent=1) + "\n```")

@@ -16,7 +16,7 @@
 2. **書き手**＝`claude -p --model opus --tools ""`（道具なし）に `STUDIO.md`＋キャプション指示書＋ネタ＋素材一覧＋最近の画風＋お手本 を渡し、
    台本（場面・字幕・読み上げ文）・場面コード（scenes.js）・Higgsfieldの指示・キャプションを **JSONの文章で** 受け取る
 3. **生成係**＝`claude -p --model sonnet` に Higgsfield の生成3機能（generate_video / generate_image / jobs_wait）だけ許可。
-   **動画1本（seedance 2.0・5秒・1080p＝45）＋画像2枚まで（nano_banana_pro 2k＝各2）＝1本49〜最大60クレジット**（のみさん決定の上限60）
+   **動画1本（seedance 2.5・5秒・1080p・音あり＝80）＋画像2枚まで（nano_banana_pro 2k＝各2）＝1本80〜最大84クレジット**（2026-10-18 のみさん決定＝品質優先で 2.0 から切り替え。~~seedance 2.0＝45・上限60~~ は失効＝2.0も同日の見積りでは音ありで60だった）。主力モデルは `skills\higgsfield\SKILL.md` の「モデル早見」が正＝変えたら `scripts\studio_reel.py` も直す
 4. 声（AivisSpeech・文ごとに 7拍/秒 にそろえる）→ 見本コマ18枚 → **確認役**＝`claude -p --tools Read`（見本コマ一覧を見るだけ）が
    はみ出し・重なり・誤読を点検し、直すなら直した JSON を返す（1回まで）
 5. 全コマ書き出し（Playwright）→ BGM作曲＋ミックス → 合成（ffmpeg）→ 長さ15〜60秒・禁止語（キャプション・字幕・場面コード内の文字）を検査
