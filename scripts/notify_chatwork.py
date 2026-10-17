@@ -126,6 +126,22 @@ def todays_failure():
     return m.group(2)[:300] if m and m.group(1) == today else ""
 
 
+def todays_note():
+    """_最終結果.txt が今日の[成功]で「※」の注意が付いていれば、その注意を返す（2026-10-17 追加）。
+    夜のスタジオの「⚠テンポ目標に届かず」「⚠テンポを測れなかった」「⚠確認役の最後の直しで…」や
+    「夜の高品質版は作れず、従来の自動リールにした」を、のみさんが読む朝会への報告まで届けるため（別の目の点検で発覚）。"""
+    p = REPO / "_最終結果.txt"
+    if not p.exists():
+        return ""
+    line = p.read_text(encoding="utf-8-sig").strip().split("\n")[0]
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    m = re.match(r"\[成功\] (\d{4}-\d{2}-\d{2}) \d{2}:\d{2} (.*)", line)
+    if not m or m.group(1) != today or "※" not in m.group(2):
+        return ""
+    body = m.group(2)
+    return body[body.index("※") + 1:].strip()[:300]
+
+
 def build_message():
     pack = this_week_pack()
     drift = dict_drift()
@@ -190,6 +206,9 @@ def build_report():
         media = sorted(p.name for p in pack.iterdir() if p.suffix.lower() in (".jpg", ".mp4"))
         lines.append(f"[承認待ち] {today} {pack.name}")
         lines.append(f"見出し: {caption.split(chr(10))[0][:60]}")
+        note = todays_note()
+        if note:
+            lines.append(f"注意: {note}")
         lines.append(f"中身: {'／'.join(media)}")
         lines.append(f"見る: https://github.com/teruhikonomizu-ops/unizom-insta/tree/main/docs/media/{pack.name}")
         lines.append("出し方: PCのClaudeに「インスタ出して」（何もしなければ投稿されない）")

@@ -356,7 +356,12 @@ def main():
                         pace_ok, pace_msg, safe = True, f"テンポ: 測定に失敗したので測らなかった（{str(e)[:120]}）", []
                     log(pace_msg + ("" if pace_ok else "  → 目標に届かない"))
                     # safe＝0.25秒ごとの測定コマで見つけた安全域の問題。確認役には渡すが、週を止める判定には使わない（一瞬の通過は実害が小さい）
-                    return sheets, errs, audit, [a for a in safe if a not in audit], pace_ok, pace_msg
+                    # 「3.60秒: 」の時刻を外した本文で重複を除く（同じ文字が1場面ずっと帯に入っていても1行にする）
+                    body = lambda s: re.sub(r"^[0-9.]+秒: ", "", s)
+                    seen, uniq = {body(a) for a in audit}, []
+                    for a in safe:
+                        if body(a) not in seen: seen.add(body(a)); uniq.append(a)
+                    return sheets, errs, audit, uniq, pace_ok, pace_msg
                 sheets, errs, audit, safe, pace_ok, pace_msg = check(timing)
                 # 問題（エラー・見本コマの検査）の無かった最後の版を覚えておく＝確認役の最後の直しで壊れたら、そこへ戻す（別の目の点検 2026-10-17）
                 good = (d, pace_ok, pace_msg) if not (errs or audit) else None
@@ -364,27 +369,39 @@ def main():
                 for rnd_no in (1, 2):
                     if rnd_no == 2 and not (audit or errs or safe or not pace_ok): break
                     if audit or safe: log("機械の検査: " + " / ".join((audit + safe)[:6]))
-                    readings = media.check_readings(d["script"])
-                    issues = audit + safe + ([] if pace_ok else [pace_msg + "。STUDIO.md の『テンポ＝切り替えの早い型』どおり、1場面の中で cutAt で絵を3〜5回切り替え、場面の切り替えは cut を基本にすること"])
-                    fixed = review(d, work, sheets, readings, vrep, errs, issues)
-                    if not fixed:
-                        if rnd_no == 1: log("確認: 直す所なし")
+                    try:   # 確認役の直しが例外（JSONの崩れ・無い素材・claudeの失敗）で壊れても、問題の無かった版があればそこへ戻す
+                        readings = media.check_readings(d["script"])
+                        issues = audit + safe + ([] if pace_ok else [pace_msg + "。STUDIO.md の『テンポ＝切り替えの早い型』どおり、1場面の中で cutAt で絵を3〜5回切り替え、場面の切り替えは cut を基本にすること"])
+                        fixed = review(d, work, sheets, readings, vrep, errs, issues)
+                        if not fixed:
+                            if rnd_no == 1: log("確認: 直す所なし")
+                            break
+                        log(f"確認{rnd_no}回目で直しが入った"); d = fixed
+                        (work / f"draft{rnd_no+1}.json").write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+                        used_stock, timing, vrep = build(d)
+                        sheets, errs, audit, safe, pace_ok, pace_msg = check(timing)
+                        if not (errs or audit): good = (d, pace_ok, pace_msg)
+                    except Exception as e:
+                        if not good: raise
+                        log(f"確認{rnd_no}回目の直しで例外: {str(e)[:200]}")
+                        errs, audit = [f"確認役の直しで例外: {str(e)[:150]}"], []
                         break
-                    log(f"確認{rnd_no}回目で直しが入った"); d = fixed
-                    (work / f"draft{rnd_no+1}.json").write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
-                    used_stock, timing, vrep = build(d)
-                    sheets, errs, audit, safe, pace_ok, pace_msg = check(timing)
-                    if not (errs or audit): good = (d, pace_ok, pace_msg)
                 reverted = False
                 if (errs or audit) and good:
                     log("最後の直しで誤りが残った（" + " / ".join((errs + audit)[:2]) + "）→ 問題の無かった版に戻して作る")
                     d, pace_ok, pace_msg = good; reverted = True
+                    (work / "draft_final.json").write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
                     used_stock, timing, vrep = build(d)
                     _, errs, audit = build_samples(work, srv.url, timing)
-                if errs: raise RuntimeError("書き出しのエラー: " + " / ".join(errs[:3]))
-                if audit: raise RuntimeError("文字の重なり・はみ出しが直らなかった: " + " / ".join(audit[:3]))
+                    if errs or audit: log("戻した版でも検査に落ちた（声を作り直した分のずれの可能性）")
+                if errs: raise RuntimeError(("戻した版でも " if reverted else "") + "書き出しのエラー: " + " / ".join(errs[:3]))
+                if audit: raise RuntimeError(("戻した版でも " if reverted else "") + "文字の重なり・はみ出しが直らなかった: " + " / ".join(audit[:3]))
                 # テンポが目標に届かなくても、その週は止めない（ゆっくりでも高品質版の方が従来版より良い）。結果の行に残す
                 pace_note = "" if pace_ok else f"・⚠テンポ目標に届かず（{pace_msg.replace('テンポ: ', '')}）"
+                # 見張り自身の故障を黙らせない：測れなかった週も火曜07:30の通知に出す（「測れる場面が短い」は故障ではないので出さない）
+                if pace_ok and ("測定に失敗" in pace_msg or "書き出せなかった" in pace_msg):
+                    why = pace_msg.replace('テンポ: ', ''); why = why if len(why) <= 90 else why[:88] + '…'
+                    pace_note += f"・⚠テンポを測れなかった（{why}）"
                 if reverted: pace_note += "・⚠確認役の最後の直しで誤りが出たので、その前の版で作った"
                 log("全コマを書き出す")
                 ok, errs = render(work, srv.url, work / "frames")
