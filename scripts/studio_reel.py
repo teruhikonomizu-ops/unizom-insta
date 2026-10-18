@@ -137,6 +137,10 @@ def write(d, topic, cut, photos, history, work, fix_note=""):
 
 
 # ---------- Higgsfield（生成係） ----------
+# 生成係の報告で気づいた注意（作られたジョブが件数より多い等）。結果の1行に「・⚠…」で添える（2026-10-18 点検の指摘）
+HF_NOTES = []
+
+
 def higgsfield(d, work, hf_from=None):
     hf = d.get("higgsfield") or {}
     jobs = []
@@ -165,17 +169,25 @@ def higgsfield(d, work, hf_from=None):
                          "resolution": "2k", "count": 1, "use_unlim": False, "prompt": prompt}})
     prompt = ("あなたはHiggsfieldの生成係です。下の一覧を、書いてあるパラメータのまま1件につき1回だけ生成してください。"
               "パラメータを変えない・件数を増やさない・作り直さない。失敗した件は作り直さずに失敗として報告する。\n"
-              "ただし生成せずに「プリセットのお勧め（preset_recommendation）」が返った時だけは、まだ作られていないので、"
-              "同じパラメータに retry_literal_with の declined_preset_id を足して1回だけ出し直す（作り直しには数えない）。\n"
-              "全部を出したら jobs_wait で全件が終わるまで待つ（最大30回まで呼んでよい）。\n"
-              "最後に JSON だけを出力: {\"results\": {\"<key>\": \"<result_url>\"}, \"failed\": [\"<key>\"]}\n\n```json\n"
+              "例外は1つだけ：返事にジョブ（id）が1つも無く、preset_recommendation と retry_literal_with だけが返った時は、"
+              "まだ作られていないので、同じパラメータに retry_literal_with の declined_preset_id を足して1回だけ出し直す。"
+              "返事にジョブ（id）があれば、お勧めが添えてあっても出し直さない。出し直しでもまたジョブが無ければ、その件は failed にして終える（3回目は出さない）。"
+              "通信が切れるなどで結果が分からない時も出し直さない（failed にする）。\n"
+              "全部を出したら jobs_wait で全件が終わるまで待つ（最大60回まで呼んでよい）。\n"
+              "最後に JSON だけを出力: {\"results\": {\"<key>\": \"<result_url>\"}, \"failed\": [\"<key>\"], "
+              "\"jobs_created\": <実際にジョブ（id）が作られた生成の回数>}\n\n```json\n"
               + json.dumps(spec, ensure_ascii=False, indent=1) + "\n```")
     out = claude(prompt, work, tools="", model="sonnet", strict_mcp=False, timeout=2400,
                  allowed=["mcp__higgsfield__generate_video", "mcp__higgsfield__generate_image", "mcp__higgsfield__jobs_wait"])
     res = parse_json(out)
+    # 上限（動画1本＋画像2枚）は生成係への約束でしかない＝作られたジョブの数を報告させて照らす
+    made = res.get("jobs_created")
+    log(f"Higgsfield 作られたジョブ {made} 件（予定 {len(jobs)} 件）")
+    if isinstance(made, int) and made > len(jobs):
+        HF_NOTES.append(f"・⚠Higgsfieldのジョブが予定より多い（{made}件／予定{len(jobs)}件＝クレジットを余計に使った可能性）")
     for kind, key, _ in jobs:
         url = (res.get("results") or {}).get(key)
-        if not url: raise RuntimeError(f"Higgsfieldで {key} が作れなかった: {res.get('failed')}")
+        if not url: raise RuntimeError(f"Higgsfieldで {key} が作れなかった: {res.get('failed')}（作られたジョブ {made} 件＝クレジットは使った可能性）")
         p = work / "hf" / (key + (".mp4" if kind == "video" else ".png")); p.parent.mkdir(exist_ok=True)
         urllib.request.urlretrieve(url, p); got[key] = p
         log(f"Higgsfield {key} を受け取った（{p.stat().st_size//1024}KB）")
@@ -407,6 +419,7 @@ def main():
                     why = pace_msg.replace('テンポ: ', ''); why = why if len(why) <= 90 else why[:88] + '…'
                     pace_note += f"・⚠テンポを測れなかった（{why}）"
                 if reverted: pace_note += "・⚠確認役の最後の直しで誤りが出たので、その前の版で作った"
+                pace_note += "".join(HF_NOTES)
                 log("全コマを書き出す")
                 ok, errs = render(work, srv.url, work / "frames")
                 if not ok: raise RuntimeError("全コマの書き出しに失敗: " + " / ".join(errs[:3]))
