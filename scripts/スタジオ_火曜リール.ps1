@@ -1,6 +1,7 @@
 ﻿# 火曜リールの「高品質版」を前夜に作る（リール・スタジオ・2026-09-29 のみさん指示）
 #
-#   月曜 21:00  タスク インスタ_火曜リール_夜の制作  → 翌日（火曜）の <日付>-reel を studio_reel.py で作る
+#   月曜 15:00  タスク インスタ_火曜リール_夜の制作  → 次の火曜の <日付>-reel を studio_reel.py で作る
+#               （2026-10-27〜。~~月曜21:00~~は夜スリープに止められたため日中へ移した＝タスク登録_スタジオ.ps1 の冒頭）
 #   火曜 07:30  タスク インスタ_火曜のリール        → パックが用意済みなら通知だけ／無ければ従来の自動リールで作る
 #
 # 🔴 無人のClaudeには文章（台本・場面コード）を書かせ、見本コマを「見る」だけ。Higgsfieldは生成3機能だけ許可
@@ -45,7 +46,10 @@ try {
   $null = GitRun fetch --quiet origin
   $null = GitRun merge --ff-only origin/main
 
-  $pack = (Get-Date).AddDays(1).ToString("yyyy-MM-dd") + "-reel"
+  # パック名＝次の火曜（火曜に動いた時はその日）。🔴 ~~実行日の翌日~~だと、PCが寝て火曜の朝にずれ込んだ時に
+  #「水曜」の名前になり、火曜07:30の従来リールと同じネタで2本できた（2026-10-27・10-28-reel）
+  $today = (Get-Date).Date
+  $pack = $today.AddDays(([int][DayOfWeek]::Tuesday - [int]$today.DayOfWeek + 7) % 7).ToString("yyyy-MM-dd") + "-reel"
   # その日のパックが既にある（感謝祭など のみさんと手で作った物）＝作らずに見送る。失敗ではないので[成功]と書く
   #（2026-10-12 総点検: 「既にある」で[失敗]になり、翌週まで名札が赤＝誤報になっていた）
   if (Test-Path (Join-Path $repo "docs\media\$pack")) {
