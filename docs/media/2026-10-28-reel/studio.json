@@ -1,0 +1,97 @@
+{
+ "topic_id": "insole-choice",
+ "style_plan": [
+  "hook=実写AI動画（霜の朝の畑・ぬかるみで長靴の足元がずるっと滑る）＋大きな文字を叩きつけ",
+  "three=暗いスタジオに実写の切り抜き → 赤い面に大きな「3つ」 → 一語畳み掛け（rush：つま先・かかと・サイズ／霜と稲の実写写真） → 生成り紙に切り抜きの真横＋①②③の札",
+  "toe=赤い面の番号札「1」 → クレヨン手描きの長靴断面（すき間・ずるっ） → 暗いスタジオで切り抜きのつま先に寄る＋数え上げ約7mm → クレヨンでインソールが入りすき間が埋まる → ぬかるみの実写写真（coverImg）",
+  "heel=赤い面の番号札「2」 → 設計図の線画（浅いとかかとが浮く → 深型ヒールカップが立ち上がる） → 暗いスタジオに切り抜きの真横＋かかと・土踏まずへ赤い引き出し線＋数え上げ約8mm → 生成り紙に商品写真の白フチカード",
+  "size=赤い面の番号札「3」 → 生成り紙のフラット図解（S・M・Lのシルエット） → 暗いスタジオにサイズ札3枚（cm） → 生成り紙の上面図にカットライン＋はさみ → クラフト紙に商品写真の白フチカード",
+  "end=AI背景（霜の朝の畑の板の上）＋実物のインソール・パッケージ＋①②③の札＋実物ロゴ"
+ ],
+ "script": {
+  "speaker": 497929760,
+  "target_rate": 7.0,
+  "sentence_gap": 0.42,
+  "scenes": [
+   {
+    "id": "hook",
+    "show": "長靴の中で、足が滑って、かかとが浮く。",
+    "sentences": [
+     "長靴の中で、足が滑って、かかとが浮く。"
+    ],
+    "pad": 1.2,
+    "video": "hook"
+   },
+   {
+    "id": "three",
+    "show": "インソールで見るのは、3つ。つま先、かかと、サイズです。",
+    "sentences": [
+     "インソールで見るのは、三つ。",
+     "つま先、かかと、サイズです。"
+    ],
+    "pad": 0.8
+   },
+   {
+    "id": "toe",
+    "show": "ひとつ目は、つま先。約7mmの極厚で、前滑りを抑えます。",
+    "sentences": [
+     "ひとつ目は、つま先。",
+     "約7ミリの、ごくあつで、前滑りを抑えます。"
+    ],
+    "pad": 0.8
+   },
+   {
+    "id": "heel",
+    "show": "ふたつ目は、かかと。深型ヒールカップで、抜けにくい。",
+    "sentences": [
+     "ふたつ目は、かかと。",
+     "フカガタの、ヒールカップで、抜けにくい。"
+    ],
+    "pad": 0.8
+   },
+   {
+    "id": "size",
+    "show": "みっつ目は、S・M・Lのサイズ。カットラインで、調整できます。",
+    "sentences": [
+     "みっつ目は、エス、エム、エルのサイズ。",
+     "カットラインで、調整できます。"
+    ],
+    "pad": 0.8
+   },
+   {
+    "id": "end",
+    "show": "この3つを備えた、長靴・ウェーダー専用インソール。Amazon・楽天で好評発売中です。",
+    "sentences": [
+     "この三つを備えた、長靴、ウェーダー専用インソール。",
+     "アマゾンと楽天で、好評発売中です。"
+    ],
+    "pad": 2.2
+   }
+  ]
+ },
+ "assets": {
+  "duo": "cutout:insole-duo-38",
+  "side": "cutout:insole-side",
+  "pkg": "cutout:insole-pkg",
+  "logo": "cutout:unizom-logo",
+  "hfrost": "stock:hatake-frost",
+  "frost": "stock:tanbo-frost",
+  "gold": "stock:tanbo-before-harvest",
+  "mud": "stock:hatake-mud",
+  "details": "stock:insole-details",
+  "angles": "stock:insole-angles",
+  "bg": "hf:bg"
+ },
+ "higgsfield": {
+  "video": {
+   "key": "hook",
+   "prompt": "[SCENE] Late-autumn early morning in a Japanese vegetable field: rows of daikon radish and napa cabbage, dark wet soil with thin white frost on the clods along the furrow edges. Ankle-height close shot from the side: a farmer wearing plain matte black knee-high rubber boots walks down a gentle muddy slope between two rows. Within the first two seconds, the front boot lands on slick mud and skids forward a few centimeters before catching, smearing mud ahead of the toe; then the back boot lifts out of the soft mud with a slight suction and steps forward. Steady, natural walking, no falling.\n[CAMERA] Vertical 9:16 framing. Low, stable side tracking shot at boot height, 35mm lens, aperture f/5.6 so the furrows and leaves behind stay clearly readable (no heavy background blur), focus on the boots. Real-time speed, no slow-motion.\n[LIGHTING] Low cold morning sun from camera-right, 4800K, long thin shadows, soft blue shade on the frost, specular glints on wet mud and rubber.\n[MATERIALS & TEXTURE] Glossy wet black rubber, sticky dark brown mud with boot-shaped smears, crunchy frost crystals on soil clods, waxy green daikon leaves.\n[COLOR PALETTE] Charcoal black, deep earth brown, frost white with pale blue shade, muted leaf green, one warm amber sun accent. Natural contrast.\n[AUDIO] Natural sounds only: squelch and slide of boots in mud, faint crunch of frosty soil, distant morning birds. No music, no voice.\n[AVOID] Logos, text, letters or brand marks on the boots, product packaging, insoles, people's faces, extra legs, deformed feet, morphing boots, falling down, camera shake, fisheye distortion, heavy bokeh, slow-motion."
+  },
+  "images": [
+   {
+    "key": "bg",
+    "prompt": "[SCENE] A Japanese vegetable field on a frosty late-autumn morning, vertical frame. In the lower third, a weathered flat wooden board lies on the dark soil at the end of a furrow, empty and clean, as a natural stage in the foreground. Behind it, rows of daikon radish and napa cabbage with thin white frost on the leaf edges and soil clods, a simple wooden fence and distant low hills. Upper third: calm, tonally uniform pale morning sky within the natural scene.\n[LIGHTING] Low morning sun from camera-left, 4500K, gentle golden rim light on the frost, soft long shadows, faint morning mist.\n[LENS & CAMERA] Shot on 35mm, aperture f/8, the board in sharp focus and the background clearly readable with only mild depth falloff.\n[MATERIALS & TEXTURE] Raw grey-brown wood grain with a few frost crystals, damp dark soil, crisp white frost, waxy green leaves.\n[COLOR PALETTE] Deep charcoal shadows, frost white with pale blue shade, muted leaf green, warm amber sunlight, one natural deep red accent from a few red autumn leaves on the soil.\n[AVOID] Text, letters, logos, watermarks, people, animals, boots, products on the board, oversaturated sky, heavy blur, tilted horizon.\nresolution: 2k"
+   }
+  ]
+ }
+}
