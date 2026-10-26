@@ -98,12 +98,13 @@ try {
   if ($Reel) { $suffix = "reel"; $extra = @("--reel") }
   $exists = Get-ChildItem (Join-Path $repo "docs\media") -Directory -ErrorAction SilentlyContinue |
             Where-Object { $_.Name -like "$today-*" } | Select-Object -First 1
-  # 火曜は前夜のリール・スタジオ（高品質版）の結果を見る（2026-09-29追加）。失敗なら理由を通知に添える
+  # 火曜は前日のリール・スタジオ（高品質版）の結果を見る（2026-09-29追加）。失敗なら理由を通知に添える
+  # 🔴 2026-10-27 制作を月曜21:00→15:00へ移したので ~~14時間以内~~ → 20時間以内（15:00の結果は火曜07:30で16.5時間前。前の週の結果は7日前＝紛れない）
   $studioNote = ""; $studioFailed = $false
   $studioFile = Join-Path $repo "_スタジオ結果.txt"
-  if ($Reel -and (Test-Path $studioFile) -and ((Get-Item $studioFile).LastWriteTime -gt (Get-Date).AddHours(-14))) {
+  if ($Reel -and (Test-Path $studioFile) -and ((Get-Item $studioFile).LastWriteTime -gt (Get-Date).AddHours(-20))) {
     $s1 = (Get-Content $studioFile -Encoding UTF8 -TotalCount 1)
-    if ($s1 -like "[[]失敗]*") { $studioFailed = $true; $studioNote = " ※夜の高品質版は作れず、従来の自動リールにした（" + ($s1 -replace '^\[失敗\]\s*\S+\s+\S+\s*', '') + "）" }
+    if ($s1 -like "[[]失敗]*") { $studioFailed = $true; $studioNote = " ※前日（月曜）の高品質版は作れず、従来の自動リールにした（" + ($s1 -replace '^\[失敗\]\s*\S+\s+\S+\s*', '') + "）" }
     # 2026-10-17: 成功でも「⚠テンポ目標に届かず」「⚠確認役の最後の直しで…」が付いていれば通知に添える（切り替えの早い型の見張り）
     elseif ($s1 -and $s1.Contains([string][char]0x26A0)) { $studioNote = " ※" + $s1.Substring($s1.IndexOf([string][char]0x26A0)) }
   }
@@ -112,7 +113,7 @@ try {
     if (Test-Path (Join-Path $exists.FullName "studio.json")) {
       $kind = "高品質版・"
       # 高品質版が出来ているのに「従来の自動リールにした」と書かない（2026-10-05は push だけ失敗していた）
-      if ($studioFailed) { $studioNote = " ※夜のスタジオは最後の送信で止まったが、高品質版は出来ていた（" + ($s1 -replace '^\[失敗\]\s*\S+\s+\S+\s*', '') + "）" }
+      if ($studioFailed) { $studioNote = " ※前日（月曜）のスタジオは最後の送信で止まったが、高品質版は出来ていた（" + ($s1 -replace '^\[失敗\]\s*\S+\s+\S+\s*', '') + "）" }
     }
     Note "その日のパックは用意済み($($exists.Name))。作らずに通知だけする。"
     if ($pushFail) { Result "失敗" "その日のパックは手元に用意済み($kind$($exists.Name))だが、$pushFail$studioNote" }
