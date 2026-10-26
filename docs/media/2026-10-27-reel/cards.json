@@ -1,0 +1,71 @@
+{
+  "format": "reel",
+  "cards": [
+    {
+      "src": "raw/1.jpg",
+      "out": "cards/1.jpg",
+      "kicker": "選び方",
+      "lines": [
+        "長靴インソール",
+        "見るのは3つ"
+      ],
+      "subs": [
+        "田んぼ・畑の作業に"
+      ],
+      "line_size": 96
+    },
+    {
+      "src": "raw/2.mp4",
+      "out": "cards/2.png",
+      "kicker": "① つま先",
+      "lines": [
+        "極厚つま先",
+        "約7mm"
+      ],
+      "subs": [
+        "余分な空間を埋めて",
+        "前滑りを抑える"
+      ],
+      "line_size": 116
+    },
+    {
+      "src": "raw/3.jpg",
+      "out": "cards/3.jpg",
+      "kicker": "② かかと",
+      "lines": [
+        "深型ヒールカップ"
+      ],
+      "subs": [
+        "かかとが抜けにくい",
+        "高反発EVA 約8mm"
+      ],
+      "line_size": 96
+    },
+    {
+      "src": "raw/4.jpg",
+      "out": "cards/4.jpg",
+      "kicker": "③ サイズ",
+      "lines": [
+        "S・M・L"
+      ],
+      "subs": [
+        "23.5〜29.5cmに対応",
+        "カットラインで調整"
+      ],
+      "line_size": 116
+    },
+    {
+      "src": "raw/5.jpg",
+      "out": "cards/5.jpg",
+      "kicker": "詳しくは",
+      "lines": [
+        "プロフィールの",
+        "リンクから"
+      ],
+      "subs": [
+        "Amazon・楽天で販売中"
+      ],
+      "line_size": 96
+    }
+  ]
+}
