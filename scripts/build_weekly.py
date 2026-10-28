@@ -22,11 +22,16 @@
 import argparse
 import datetime
 import json
+import os
 import pathlib
 import re
 import shutil
 import subprocess
 import sys
+
+# 無人実行では security-guidance の見直し（Stop・コミット時）を止める＝頼んでいない修正を始めさせない（2026-10-29 のみさん決定）
+# studio_reel.py もこのファイルを import するので、ここ1か所で両方に効く
+os.environ["ENABLE_CODE_SECURITY_REVIEW"] = "0"
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 TOPICS = REPO / "topics.json"
