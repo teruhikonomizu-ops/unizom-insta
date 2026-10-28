@@ -12,8 +12,20 @@
    それ以外（声・書き出し・音・合成・禁止語チェック・公開）はこのプログラムが決まった手順で行う。
 
 使い方: python scripts/studio_reel.py <パック名> [--topic <id>] [--dry] [--hf-from <フォルダ>]
-  --dry      : docs/media・台帳を触らない（作業フォルダに mp4 を作るだけ）
+  --dry      : docs/media・台帳を触らない（作業フォルダに mp4 を作るだけ・docs/media に同じ名前があっても作る）
   --hf-from  : Higgsfieldを呼ばず、フォルダ内の <キー>.mp4 / <キー>.png を使う（試験用・クレジット0）
+               作業フォルダ（%LOCALAPPDATA%\\unizom-studio\\<パック名>）の中を指した時は、作業フォルダを消す前に
+               %LOCALAPPDATA%\\unizom-studio\\_hf退避\\ へ移してから使う（2026-10-28・前は先に消してから読んでいた）
+
+🔴 止まらない・居座らない（2026-10-28 総点検 中14）
+  - 始めに _スタジオ結果.txt を「[実行中] <日時> <パック名> …」にする＝途中で止まったら火曜07:30の通知が気づく
+  - main 全体の締め切り DEADLINE_SEC（1時間50分）を過ぎたら [失敗] を書き、子（claude・node・ffmpeg）を止めて os._exit。
+    タスクの上限（2時間）ちょうどだとタスクの打ち切りと重なって [失敗] を書けない恐れがあるので、少し前にしてある
+  - 制作中の印（夜スリープ向け）は寿命2時間半。固まっても一晩PCを起こし続けない
+  - ダウンロード・AivisSpeech・ffmpeg・禁止語チェックにも待ち時間の上限を付けた
+🔴 Higgsfieldの使いすぎを機械で見る（2026-10-28 総点検 中15）
+  - 生成の前後に別の claude -p（haiku・残高を読む道具1つだけ許可）で残高を読み、差が上限 HF_MAX_CREDITS（84）を超えたら結果に⚠。
+    数字は haiku の文章ではなく道具の返事（tool_result）から拾う。読めなかった時も⚠（見張りの故障を黙らせない）
 """
 import argparse, datetime, functools, http.server, json, os, re, shutil, subprocess, sys, threading, time, urllib.request
 from pathlib import Path
@@ -30,7 +42,12 @@ HISTORY = STUDIO / "history.json"
 RESULT = REPO / "_スタジオ結果.txt"
 HEARTBEAT = Path(os.environ["USERPROFILE"]) / ".claude" / "tasks" / "unizom-studio-制作中.txt"
 MAX_IMAGES = 2
+HF_MAX_CREDITS = 84            # 1本の上限（Seedance 2.5 の動画80＋画像2×2）。生成係のモデルや件数を変えたらここも直す
+DEADLINE_SEC = 110 * 60        # main 全体の締め切り（タスクの上限2時間より前＝git の前後処理の分の余裕）
+HEARTBEAT_LIFE_SEC = 150 * 60  # 制作中の印の寿命（2時間半）。過ぎたら更新をやめて消す
 LOG = []
+_END_LOCK = threading.Lock()   # 置く・最後の結果を書く間は締め切りで割り込まない（半端なパックを残さない）
+STAGE = {"hf": False}          # Higgsfieldの生成係が動いている間 True＝締め切りの[失敗]に「クレジットは使った可能性」を添える
 
 
 def log(msg):
@@ -43,16 +60,22 @@ def result(mark, msg):
 
 # ---------- 夜スリープに「制作中」を伝える（~/.claude/tasks の更新＝作業中と判定される） ----------
 class Heartbeat:
+    def __init__(self, life=None):
+        self.life = HEARTBEAT_LIFE_SEC if life is None else life
     def __enter__(self):
-        self.stop = threading.Event()
+        self.stop = threading.Event(); start = time.time()
         def beat():
             while not self.stop.is_set():
+                if time.time() - start > self.life:   # 寿命：制作が固まっても夜スリープを一晩止めない（2026-10-28 総点検 中14）
+                    try: HEARTBEAT.unlink()
+                    except Exception: pass
+                    return
                 try:
                     HEARTBEAT.parent.mkdir(parents=True, exist_ok=True)
                     HEARTBEAT.write_text(f"リール・スタジオ制作中 {datetime.datetime.now():%Y-%m-%d %H:%M:%S}\n", encoding="utf-8")
                 except Exception:
                     pass
-                self.stop.wait(300)
+                self.stop.wait(min(300, max(1, self.life / 3)))
         threading.Thread(target=beat, daemon=True).start(); return self
     def __exit__(self, *a):
         self.stop.set()
@@ -60,12 +83,54 @@ class Heartbeat:
         except Exception: pass
 
 
+# ---------- 締め切り（固まっても [失敗] を書いて終わる・2026-10-28 総点検 中14） ----------
+def _kill_children():
+    """os._exit では子（claude・node・ffmpeg）が残って動き続けるので、先に孫ごと止める。
+    AivisSpeech（run.exe）は読み上げなど他の道具も使うので残す。うまくいかなくても止まらない（できる範囲で）。"""
+    if os.name != "nt": return
+    try:
+        ps = ("Get-CimInstance Win32_Process -Filter 'ParentProcessId=%d' | "
+              "ForEach-Object { [string]$_.ProcessId + ' ' + $_.Name }") % os.getpid()
+        r = subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=60)
+        for line in r.stdout.splitlines():
+            pid, _, name = line.strip().partition(" ")
+            if pid.isdigit() and name.lower() not in ("run.exe", "powershell.exe", "conhost.exe"):
+                subprocess.run(["taskkill", "/F", "/T", "/PID", pid], capture_output=True, timeout=60)
+    except Exception:
+        pass
+
+
+def start_deadline(pack, work, seconds=None):
+    """seconds 秒たっても main が終わらなければ、[失敗] を書いて子を止め、os._exit(1) で抜ける。戻り値の Timer を終わりで cancel する。"""
+    seconds = DEADLINE_SEC if seconds is None else seconds
+    def fire():
+        if not _END_LOCK.acquire(blocking=False):   # 置いている最中＝もうすぐ終わる。割り込まない
+            return
+        try:
+            log(f"締め切り（{seconds/60:.0f}分）を過ぎたので打ち切る")
+            result("失敗", f"{pack} の高品質版は{seconds/60:.0f}分の締め切りまでに終わらず打ち切った"
+                           f"（どこで止まったかは {work / 'log.txt'}）"
+                           + ("・⚠Higgsfieldの生成の途中で打ち切った（クレジットは使った可能性）" if STAGE["hf"] else "")
+                           + "".join(HF_NOTES))
+        except Exception:
+            pass
+        try: (work / "log.txt").write_text("\n".join(LOG), encoding="utf-8")
+        except Exception: pass
+        _kill_children()
+        try: HEARTBEAT.unlink()
+        except Exception: pass
+        os._exit(1)
+    t = threading.Timer(seconds, fire); t.daemon = True; t.start(); return t
+
+
 # ---------- Claude 呼び出し（道具を絞る） ----------
-def claude(prompt, work, tools="", allowed=None, model="opus", strict_mcp=True, timeout=3600):
+def claude(prompt, work, tools="", allowed=None, model="opus", strict_mcp=True, timeout=3600, extra=None):
     cmd = [bw.claude_cmd(), "-p", "--model", model, "--tools", tools, "--permission-mode", "dontAsk", "--no-session-persistence"]
     if strict_mcp: cmd += ["--strict-mcp-config"]
     if tools: cmd += ["--add-dir", str(work)]
     if allowed: cmd += ["--allowedTools", ",".join(allowed)]
+    if extra: cmd += list(extra)
     r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, encoding="utf-8", errors="replace",
                        timeout=timeout, cwd=str(work))
     if r.returncode != 0:
@@ -141,6 +206,51 @@ def write(d, topic, cut, photos, history, work, fix_note=""):
 HF_NOTES = []
 
 
+def credits_from_stream(text):
+    """claude -p の stream-json から、mcp__higgsfield__balance の道具の返事（tool_result）にある credits を拾う。
+    haiku の文章は見ない（数字を作り話しても騙されない）。見つからなければ None。"""
+    ids, val = set(), None
+    for line in text.splitlines():
+        try: o = json.loads(line)
+        except Exception: continue
+        if not isinstance(o, dict) or o.get("type") not in ("assistant", "user"): continue
+        for c in ((o.get("message") or {}).get("content") or []):
+            if not isinstance(c, dict): continue
+            if c.get("type") == "tool_use" and c.get("name") == "mcp__higgsfield__balance":
+                ids.add(c.get("id"))
+            elif c.get("type") == "tool_result" and c.get("tool_use_id") in ids and not c.get("is_error"):
+                body = c.get("content")
+                if isinstance(body, list):
+                    body = " ".join(str(x.get("text", "")) for x in body if isinstance(x, dict))
+                m = re.search(r'"credits"\s*:\s*(-?\d+(?:\.\d+)?)', str(body))
+                if m: val = float(m.group(1))
+    return val
+
+
+def hf_balance(work):
+    """Higgsfieldの残りクレジットを読む（別の claude -p・haiku・残高を読む道具1つだけ許可＝生成はできない）。読めなければ None。"""
+    prompt = ("mcp__higgsfield__balance を1回だけ呼び、返ってきた credits の数を {\"credits\": <数>} の JSON だけで出力してください。"
+              "ほかの道具は使わないでください。")
+    try:
+        out = claude(prompt, work, tools="", model="haiku", strict_mcp=False, timeout=300,
+                     allowed=["mcp__higgsfield__balance"], extra=["--output-format", "stream-json", "--verbose"])
+        v = credits_from_stream(out)
+        if v is None: log("Higgsfieldの残高: 道具の返事に credits が無かった")
+        return v
+    except Exception as e:
+        log(f"Higgsfieldの残高を読めなかった: {str(e)[:150]}"); return None
+
+
+def credit_note(before, after, limit=HF_MAX_CREDITS):
+    """残高の差から結果の行に添える⚠を作る（問題なければ空）。"""
+    if before is None or after is None:
+        return "・⚠Higgsfieldの残高を読めず、使ったクレジットを確かめられなかった"
+    used = before - after
+    if used > limit:
+        return f"・⚠Higgsfieldの残高が{used:.0f}クレジット減った（上限{limit}を超えた。同じ時間に別の生成があればその分も含む）"
+    return ""
+
+
 def higgsfield(d, work, hf_from=None):
     hf = d.get("higgsfield") or {}
     jobs = []
@@ -177,8 +287,19 @@ def higgsfield(d, work, hf_from=None):
               "最後に JSON だけを出力: {\"results\": {\"<key>\": \"<result_url>\"}, \"failed\": [\"<key>\"], "
               "\"jobs_created\": <実際にジョブ（id）が作られた生成の回数>}\n\n```json\n"
               + json.dumps(spec, ensure_ascii=False, indent=1) + "\n```")
-    out = claude(prompt, work, tools="", model="sonnet", strict_mcp=False, timeout=2400,
-                 allowed=["mcp__higgsfield__generate_video", "mcp__higgsfield__generate_image", "mcp__higgsfield__jobs_wait"])
+    # 上限は生成係への約束でしかない＝前後の残高の差を機械で見る（2026-10-28 総点検 中15）。読めなくても止めずに作る
+    before = hf_balance(work)
+    log(f"Higgsfieldの残高（生成の前）: {before}")
+    STAGE["hf"] = True
+    try:
+        out = claude(prompt, work, tools="", model="sonnet", strict_mcp=False, timeout=2400,
+                     allowed=["mcp__higgsfield__generate_video", "mcp__higgsfield__generate_image", "mcp__higgsfield__jobs_wait"])
+    finally:   # 生成係が失敗しても、使った分は確かめる
+        after = hf_balance(work)
+        STAGE["hf"] = False
+        log(f"Higgsfieldの残高（生成の後）: {after}" + (f"・使った {before - after:.0f}" if before is not None and after is not None else ""))
+        note = credit_note(before, after)
+        if note: HF_NOTES.append(note)
     res = parse_json(out)
     # 上限（動画1本＋画像2枚）は生成係への約束でしかない＝作られたジョブの数を報告させて照らす
     made = res.get("jobs_created")
@@ -189,7 +310,10 @@ def higgsfield(d, work, hf_from=None):
         url = (res.get("results") or {}).get(key)
         if not url: raise RuntimeError(f"Higgsfieldで {key} が作れなかった: {res.get('failed')}（作られたジョブ {made} 件＝クレジットは使った可能性）")
         p = work / "hf" / (key + (".mp4" if kind == "video" else ".png")); p.parent.mkdir(exist_ok=True)
-        urllib.request.urlretrieve(url, p); got[key] = p
+        # ~~urlretrieve~~ は待ち時間の上限が無い（相手が黙ると永久に待つ）＝urlopen に timeout（2026-10-28 総点検 中14）
+        with urllib.request.urlopen(url, timeout=120) as r, open(p, "wb") as f:
+            shutil.copyfileobj(r, f)
+        got[key] = p
         log(f"Higgsfield {key} を受け取った（{p.stat().st_size//1024}KB）")
     return got
 
@@ -337,14 +461,29 @@ def texts_for_check(d):
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("pack"); ap.add_argument("--topic"); ap.add_argument("--dry", action="store_true")
     ap.add_argument("--hf-from"); args = ap.parse_args()
+    out_dir = REPO / "docs" / "media" / args.pack
+    # 既にあるパックは作らない。何もせずに分かる言葉で [失敗] を書く（--dry は docs/media を触らないので見ない）
+    if out_dir.exists() and not args.dry:
+        msg = (f"{args.pack} は docs/media/{args.pack} に既にあるので作らなかった"
+               f"（上書きしない・クレジットは使っていない。作り直すなら別のパック名で）")
+        print(msg, flush=True); result("失敗", msg); sys.exit(1)
     work = Path(os.environ["LOCALAPPDATA"]) / "unizom-studio" / args.pack
+    hf_from = Path(args.hf_from).resolve() if args.hf_from else None
+    moved = None
+    # --hf-from が作業フォルダの中なら、消す前に外へ退避する（前は先に消してから読んでいた＝作った物を失う・2026-10-28 総点検）
+    if hf_from and hf_from.exists() and work.exists() and (hf_from == work.resolve() or work.resolve() in hf_from.parents):
+        moved = work.parent / "_hf退避" / f"{args.pack}_{datetime.datetime.now():%Y%m%d_%H%M%S}"
+        moved.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(hf_from), str(moved)); hf_from = moved
     if work.exists(): shutil.rmtree(work)
     work.mkdir(parents=True)
-    out_dir = REPO / "docs" / "media" / args.pack
+    if moved: log(f"--hf-from が作業フォルダの中だったので、消す前に {moved} へ退避して使う")
+    # 始めに [実行中] を書く＝途中で止まった・打ち切られた週も、火曜07:30の通知が「[実行中]のまま」で気づく
+    result("実行中", f"{args.pack} を作り始めた（終われば[成功]か[失敗]に書き換わる。火曜の朝もこのままなら途中で止まった）")
     t0 = time.time()
+    deadline = start_deadline(args.pack, work)
     try:
         with Heartbeat():
-            if out_dir.exists(): raise RuntimeError(f"{args.pack} は既にある（上書きしない）")
             topics = bw.load(bw.TOPICS); topic = bw.pick_topic(topics, args.topic, reel=True)
             log(f"ネタ: {topic['id']} / {topic['テーマ']}")
             history = json.loads(HISTORY.read_text(encoding="utf-8")) if HISTORY.exists() else []
@@ -353,7 +492,7 @@ def main():
             d = write(None, topic, cut, photos, history, work)
             log("台本と場面コードができた: " + " / ".join(d.get("style_plan", [])))
             (work / "draft1.json").write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
-            hf_files = higgsfield(d, work, args.hf_from)
+            hf_files = higgsfield(d, work, hf_from)
 
             def build(d):
                 used = stage(d, work, hf_files)
@@ -430,7 +569,7 @@ def main():
             amb = None
             if hook:
                 amb = work / "hook_amb.wav"
-                subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(hook), "-vn", "-ac", "1", "-ar", "48000", str(amb)], check=False)
+                subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(hook), "-vn", "-ac", "1", "-ar", "48000", str(amb)], check=False, timeout=300)
             total = media.make_audio(work, timing, amb)
             first = timing[0]["scene"] + 0.45
             mp4 = work / "1.mp4"; media.compose(work, total, mp4, hook, first)
@@ -438,9 +577,11 @@ def main():
             # 検査
             if not 15 <= total <= 60: raise RuntimeError(f"長さが {total:.1f}秒（15〜60秒の外）")
             chk = work / "onscreen.txt"; chk.write_text(texts_for_check(d) + "\n" + d["caption"], encoding="utf-8")
-            r = subprocess.run([sys.executable, str(REPO / "scripts" / "safe_check.py"), str(chk)], capture_output=True, text=True, encoding="utf-8", errors="replace")
+            r = subprocess.run([sys.executable, str(REPO / "scripts" / "safe_check.py"), str(chk)], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300)
             if r.returncode != 0: raise RuntimeError("禁止語: " + " ".join(l.strip() for l in r.stdout.splitlines() if "NG" in l)[:300])
             log(f"完成 {total:.1f}秒・{mp4.stat().st_size//1024//1024}MB・{(time.time()-t0)/60:.0f}分")
+            # ここから先（置く・台帳・結果）は数秒。締め切りが割り込んで半端なパックを残さないよう鍵を取る（取れない＝もう打ち切り中）
+            if not _END_LOCK.acquire(timeout=120): raise RuntimeError("締め切りの打ち切りと重なった")
             if args.dry:
                 result("成功", f"{args.pack}（試験・--dry）を作った: {mp4}{pace_note}"); return
             # 置く（ここまで来て初めて docs/media を作る＝途中の失敗で半端なパックを残さない）
@@ -462,9 +603,10 @@ def main():
             result("成功", f"{args.pack} を高品質版で作った（{total:.0f}秒・未投稿・承認待ち）{pace_note}")
     except Exception as e:
         log(f"失敗: {e}")
-        result("失敗", f"{args.pack} の高品質版を作れなかった: {str(e)[:200]}")
+        result("失敗", f"{args.pack} の高品質版を作れなかった: {str(e)[:200]}" + "".join(HF_NOTES))
         sys.exit(1)
     finally:
+        deadline.cancel()
         (work / "log.txt").write_text("\n".join(LOG), encoding="utf-8")
 
 

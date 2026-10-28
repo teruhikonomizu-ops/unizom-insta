@@ -1,4 +1,4 @@
-﻿# 火曜リールの「高品質版」を前夜に作る（リール・スタジオ・2026-09-29 のみさん指示）
+﻿# 火曜リールの「高品質版」を前日（月曜15:00）に作る（リール・スタジオ・2026-09-29 のみさん指示／2026-10-27〜 ~~前夜21:00~~ は夜スリープに止められたため日中へ）
 #
 #   月曜 15:00  タスク インスタ_火曜リール_夜の制作  → 次の火曜の <日付>-reel を studio_reel.py で作る
 #               （2026-10-27〜。~~月曜21:00~~は夜スリープに止められたため日中へ移した＝タスク登録_スタジオ.ps1 の冒頭）
@@ -7,6 +7,8 @@
 # 🔴 無人のClaudeには文章（台本・場面コード）を書かせ、見本コマを「見る」だけ。Higgsfieldは生成3機能だけ許可
 #    （動画1本・画像2枚まで＝1本84クレジット上限・2026-10-18 のみさん決定で Seedance 2.5 に。~~60~~は2.0の頃）。権限バイパスは使わない。
 # 結果は _スタジオ結果.txt の1行目（[成功]/[失敗]）。火曜朝の通知に失敗の理由が添えられる。
+# 2026-10-28〜 studio_reel.py は始めに [実行中] を書き、1時間50分で打ち切って [失敗] を書く（タスクの上限2時間より前）。
+#   火曜朝に [実行中] のまま・結果が無い時も、通知に一言添える（投稿パックのお知らせ.ps1）。
 $ErrorActionPreference = "Stop"
 $repo = Join-Path $env:USERPROFILE "repos\unizom-insta"
 $log  = Join-Path $repo "_お知らせログ.txt"
@@ -66,7 +68,7 @@ try {
     $null = GitRun add "docs/media/$pack" topics.json stock/index.json studio/history.json
     $msg = "投稿パックを作った: $pack（高品質版・リール・スタジオ。まだ投稿していない。承認待ち）"
     $null = GitRun -c user.name="unizom-insta bot" -c user.email="teruhiko.nomizu@gmail.com" commit -q -m $msg
-    # 夜のあいだにクラウド側のコミット（トークン延長など）が入っていても push できるよう、直前に取り込む
+    # 制作のあいだにクラウド側のコミット（トークン延長など）が入っていても push できるよう、直前に取り込む
     # 衝突したら途中状態で残さず元に戻す（残すと翌週以降の取り込みが毎回失敗する）
     if ((GitRun pull --rebase --autostash -q) -ne 0) { $null = GitRun rebase --abort }
     if ((GitRun push -q) -eq 0) {

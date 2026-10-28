@@ -79,7 +79,7 @@ try {
   # 1) 最新を取り込む（他の場所で直した分を拾う）
   $null = GitRun fetch --quiet origin
   $null = GitRun merge --ff-only origin/main
-  # 前夜のスタジオが push できずに手元だけにコミットが残っていたら、ここで送る（2026-10-05の再発防止）
+  # 前日（月曜15:00）のスタジオが push できずに手元だけにコミットが残っていたら、ここで送る（2026-10-05の再発防止）
   $pushFail = ""
   $ahead = "$(RunAll { git rev-list --count origin/main..HEAD } | Select-Object -Last 1)".Trim()
   if ($ahead -match '^\d+$' -and [int]$ahead -gt 0) {
@@ -100,15 +100,23 @@ try {
             Where-Object { $_.Name -like "$today-*" } | Select-Object -First 1
   # 火曜は前日のリール・スタジオ（高品質版）の結果を見る（2026-09-29追加）。失敗なら理由を通知に添える
   # 🔴 2026-10-27 制作を月曜21:00→15:00へ移したので ~~14時間以内~~ → 20時間以内（15:00の結果は火曜07:30で16.5時間前。前の週の結果は7日前＝紛れない）
-  $studioNote = ""; $studioFailed = $false
+  $studioNote = ""; $studioFailed = $false; $studioGap = $false
   $studioFile = Join-Path $repo "_スタジオ結果.txt"
   if ($Reel -and (Test-Path $studioFile) -and ((Get-Item $studioFile).LastWriteTime -gt (Get-Date).AddHours(-20))) {
     $s1 = (Get-Content $studioFile -Encoding UTF8 -TotalCount 1)
     if ($s1 -like "[[]失敗]*") { $studioFailed = $true; $studioNote = " ※前日（月曜）の高品質版は作れず、従来の自動リールにした（" + ($s1 -replace '^\[失敗\]\s*\S+\s+\S+\s*', '') + "）" }
+    # 2026-10-28 総点検: studio_reel.py は始めに [実行中] を書く＝このままなら途中で止まった（打ち切り・PCの停止など）
+    elseif ($s1 -like "[[]実行中]*") { $studioGap = $true; $studioNote = " ※前日（月曜）の高品質版は途中で止まった（結果が[実行中]のまま＝2時間の上限で打ち切られたか、PCが止まった）。従来の自動リールにした" }
     # 2026-10-17: 成功でも「⚠テンポ目標に届かず」「⚠確認役の最後の直しで…」が付いていれば通知に添える（切り替えの早い型の見張り）
     elseif ($s1 -and $s1.Contains([string][char]0x26A0)) { $studioNote = " ※" + $s1.Substring($s1.IndexOf([string][char]0x26A0)) }
   }
+  elseif ($Reel) {
+    # 2026-10-28 総点検: 前日の結果が無い（20時間より古い・ファイルが無い）＝高品質版が動かなかった。黙らずに一言添える
+    $studioGap = $true; $studioNote = " ※前日（月曜）15:00の高品質版の結果が無い（動かなかった＝15:00にPCが切れていた・タスクが止まっている等）。従来の自動リールにした"
+  }
   if ($exists) {
+    # パックは用意済み＝高品質版が動かなかった・止まった影響は無いので、その一言は出さない
+    if ($studioGap) { $studioNote = "" }
     $kind = ""
     if (Test-Path (Join-Path $exists.FullName "studio.json")) {
       $kind = "高品質版・"

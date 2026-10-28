@@ -13,9 +13,12 @@
      caption.txt・cards.json・posted.json などの文字ファイルは残す（フォルダも残る＝
      weekly.yml の「その日のパックは用意済み」の判定は今まで通り効く）
   3. 結果を _片付け結果.txt に1行で書く（1行目 [成功]／[警戒]／[失敗]）
+  🆕 2026-10-28（総点検）: 見送ったパック（投稿しないと決めた物）は、印 docs/media/X/skipped.json がある物だけ、
+     その「見送り日」から GRACE_DAYS 日たったら同じように画像・動画を片付ける（片付けの記録は skipped.json に残す）。
+     🔴 印を置くのは のみさんが「出さない・消してよい」と言った後だけ（--skip で置く）。posted.json がある物は投稿の規則が優先。
 
 触らないもの:
-  - 投稿済みと確かめられないパック（未投稿・手で投稿した物・テスト用）は一切消さない
+  - 投稿済みと確かめられないパック（未投稿・手で投稿した物・テスト用）は一切消さない（見送りの印がある物を除く）
   - stock/（使い回す素材の貯金）は対象外
   消した物は git の履歴に残っているので、必要になれば取り戻せる。
 
@@ -23,6 +26,7 @@
   python3 scripts/cleanup_media.py --dry-run   # 消さずに一覧だけ出す（手元でもクラウドでも可）
   python3 scripts/cleanup_media.py             # 実際に片付ける（クラウドの cleanup.yml が使う）
   python3 scripts/cleanup_media.py --selftest  # 判定部分を壊したデータで試す
+  python3 scripts/cleanup_media.py --skip <パック名> --reason "<理由>"   # 見送りの印を置くだけ（何も消さない・のみさんのOKの後）
 """
 
 from __future__ import annotations
@@ -100,6 +104,17 @@ def due_for_cleanup(posted: dict, now: datetime) -> bool:
     return now - last >= timedelta(days=GRACE_DAYS)
 
 
+def due_for_cleanup_skipped(skipped: dict | None, now: datetime) -> bool:
+    """見送りの印（skipped.json）から、片付けてよい時期か判定する。日付が読めない印では片付けない"""
+    if not skipped or skipped.get("片付け"):
+        return False
+    try:
+        day = datetime.strptime(str(skipped.get("見送り日")), "%Y-%m-%d").replace(tzinfo=JST)
+    except ValueError:
+        return False
+    return now - day >= timedelta(days=GRACE_DAYS)
+
+
 def media_files(pack_dir: Path) -> list[Path]:
     """消す対象（画像・動画・音声と、作業用の raw/ など下の階層）。文字ファイルは残す"""
     out = []
@@ -124,6 +139,8 @@ def judge(stats: dict) -> tuple[str, list[str]]:
         reasons.append("成功した投稿の実行があるのに、投稿済みが1件も見つからない（読み取りが壊れている）")
     if stats["media_dirs"] == 0:
         reasons.append("docs/media が空か見つからない（場所が変わった疑い）")
+    if stats.get("bad_marks"):
+        reasons.append(f"見送りの印（skipped.json）が読めないパックが{stats['bad_marks']}件（そのパックは片付けていない）")
     if reasons:
         return "[失敗]", reasons
     warn = []
@@ -176,16 +193,70 @@ def save_posted(pack_dir: Path, data: dict) -> None:
     (pack_dir / "posted.json").write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+SKIP_FILE = "skipped.json"
+
+
+def load_skipped(pack_dir: Path) -> dict | None:
+    """見送りの印。無ければ None。読めなければ例外（呼ぶ側で[失敗]に数える）"""
+    f = pack_dir / SKIP_FILE
+    if not f.exists():
+        return None
+    data = json.loads(f.read_text(encoding="utf-8-sig"))
+    if not isinstance(data, dict):
+        raise ValueError("中身が辞書でない")
+    return data
+
+
+def save_skipped(pack_dir: Path, data: dict) -> None:
+    (pack_dir / SKIP_FILE).write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def mark_skipped(name: str, reason: str) -> int:
+    """見送りの印を置くだけ（何も消さない）。🔴 のみさんが「出さない・消してよい」と言った後にだけ使う"""
+    d = MEDIA / name
+    if not PACK_RE.match(name) or not d.is_dir() or d.is_symlink():
+        print(f"パックが見つからない: {name}")
+        return 1
+    if (d / "posted.json").exists():
+        print(f"{name} には posted.json（投稿済み・投稿中の印）がある＝見送りの印は置かない")
+        return 1
+    if not reason.strip():
+        print("--reason（見送った理由）を書いてください")
+        return 1
+    if (d / SKIP_FILE).exists():
+        print(f"{name} には既に見送りの印がある（そのまま）")
+        return 0
+    today = datetime.now(JST).strftime("%Y-%m-%d")
+    save_skipped(d, {"pack": name, "見送り日": today, "理由": reason.strip(),
+                     "_説明": f"投稿しないと決めたパック（のみさんのOK済み）。見送り日から{GRACE_DAYS}日たった月曜の片付けで"
+                              "画像・動画だけ消える（文字ファイルは残る・git の履歴から戻せる）。やめるならこのファイルを消す"})
+    print(f"{name} に見送りの印を置いた（{today}・{GRACE_DAYS}日後の月曜以降の片付けで画像・動画が消える）。コミット・push で効く")
+    return 0
+
+
 def run(dry: bool) -> int:
     now = datetime.now(timezone.utc)
     stats = {"log_errors": 0, "unknown_runs": 0, "recent_success_runs": 0,
-             "known_posted": 0, "media_dirs": 0, "docs_mb": 0.0, "repo_mb": None}
+             "known_posted": 0, "media_dirs": 0, "docs_mb": 0.0, "repo_mb": None, "bad_marks": 0}
     notes: list[str] = []
 
     packs = {p.name: p for p in MEDIA.iterdir()
              if p.is_dir() and not p.is_symlink() and PACK_RE.match(p.name)} if MEDIA.is_dir() else {}
     stats["media_dirs"] = len(packs)
     posted = {name: load_posted(d) for name, d in packs.items()}
+    # 見送りの印（2026-10-28〜）。posted.json があるパックは投稿の規則が優先＝印は見ない
+    skipped: dict[str, dict] = {}
+    for name, d in packs.items():
+        if (d / "posted.json").exists():
+            continue
+        try:
+            s = load_skipped(d)
+        except Exception as e:
+            stats["bad_marks"] += 1
+            notes.append(f"{name}: 見送りの印が読めない（{type(e).__name__}）")
+            continue
+        if s is not None:
+            skipped[name] = s
     known_runs = {p.get("run_id") for v in posted.values() for p in v.get("posts", [])}
 
     # 1. 投稿ログから「投稿済み」の印を作る
@@ -230,13 +301,22 @@ def run(dry: bool) -> int:
     cleaned, freed = [], 0.0
     for name in sorted(packs):
         v = posted[name]
-        if not v.get("posts") or not due_for_cleanup(v, now):
+        sk = skipped.get(name)
+        if v.get("posts"):
+            if not due_for_cleanup(v, now):
+                continue
+            label, rec = "", v
+        elif sk is not None:
+            if not due_for_cleanup_skipped(sk, now):
+                continue
+            label, rec = "見送り・", sk
+        else:
             continue
         targets = media_files(packs[name])
         if not targets:
             continue
         mb = sum(dir_mb(t) if t.is_dir() else t.stat().st_size / 1048576 for t in targets)
-        cleaned.append(f"{name}（{len(targets)}点・{mb:.1f}MB）")
+        cleaned.append(f"{name}（{label}{len(targets)}点・{mb:.1f}MB）")
         freed += mb
         if dry:
             continue
@@ -248,14 +328,17 @@ def run(dry: bool) -> int:
                 shutil.rmtree(t)
             else:
                 t.unlink()
-        v["片付け"] = {"日時": now.astimezone(JST).strftime("%Y-%m-%d %H:%M"),
-                      "消した物": [t.name for t in targets], "MB": round(mb, 1)}
-        v["_changed"] = True
+        rec["片付け"] = {"日時": now.astimezone(JST).strftime("%Y-%m-%d %H:%M"),
+                        "消した物": [t.name for t in targets], "MB": round(mb, 1)}
+        rec["_changed"] = True
 
     if not dry:
         for name, v in posted.items():
             if v.pop("_changed", False):
                 save_posted(packs[name], v)
+        for name, s in skipped.items():
+            if s.pop("_changed", False):
+                save_skipped(packs[name], s)
 
     # 3. 結果
     stats["docs_mb"] = dir_mb(ROOT / "docs") - (0 if not dry else freed)
@@ -265,9 +348,10 @@ def run(dry: bool) -> int:
     repo_txt = f"{stats['repo_mb']:.0f}MB" if stats["repo_mb"] is not None else "不明"
     first = (f"{head} {stamp} 片付け{len(cleaned)}件（{freed:.1f}MB）"
              f"・公開サイト {stats['docs_mb']:.0f}MB／上限1GB・リポジトリ {repo_txt}／推奨1GB"
-             f"・投稿済みと確認 {stats['known_posted']}件")
+             f"・投稿済みと確認 {stats['known_posted']}件・見送りの印 {len(skipped)}件")
     lines = [first] + [f"理由: {r}" for r in reasons] + [f"片付けた: {c}" for c in cleaned] + [f"メモ: {n}" for n in notes]
-    lines.append(f"規則: 投稿から{GRACE_DAYS}日たったパックの画像・動画だけを消す（文字ファイルは残す・未投稿は触らない・消した物は git の履歴から戻せる）")
+    lines.append(f"規則: 投稿から{GRACE_DAYS}日たったパックの画像・動画だけを消す（文字ファイルは残す・未投稿は触らない・消した物は git の履歴から戻せる）"
+                 f"／見送りの印（skipped.json・のみさんのOK後に置く）があるパックは見送り日から{GRACE_DAYS}日で同じように片付ける")
     text = "\n".join(lines) + "\n"
     print(("（確認だけ・何も消していない）\n" if dry else "") + text)
     if not dry:
@@ -301,6 +385,11 @@ def selftest() -> int:
     check("14日前の投稿は片付ける", due_for_cleanup({"posts": [{"posted_at": "2026-10-06T00:00:00Z"}]}, now))
     check("印の無いパックは片付けない", not due_for_cleanup({"posts": []}, now))
     check("片付け済みは二度やらない", not due_for_cleanup({"posts": [{"posted_at": "2026-09-01T00:00:00Z"}], "片付け": {"日時": "x"}}, now))
+    check("見送り13日目は残す", not due_for_cleanup_skipped({"見送り日": "2026-10-07"}, now))
+    check("見送り14日目は片付ける", due_for_cleanup_skipped({"見送り日": "2026-10-06"}, now))
+    check("見送りの印が無ければ片付けない", not due_for_cleanup_skipped(None, now))
+    check("見送り日が読めない印では片付けない", not due_for_cleanup_skipped({"見送り日": "10/06"}, now))
+    check("見送りの片付け済みは二度やらない", not due_for_cleanup_skipped({"見送り日": "2026-09-01", "片付け": {"日時": "x"}}, now))
 
     base = {"log_errors": 0, "unknown_runs": 0, "recent_success_runs": 10, "known_posted": 8,
             "media_dirs": 20, "docs_mb": 140.0, "repo_mb": 260.0}
@@ -311,6 +400,7 @@ def selftest() -> int:
     check("フォルダが消えたら [失敗]", judge({**base, "media_dirs": 0})[0] == "[失敗]")
     check("公開サイト700MB超で [警戒]", judge({**base, "docs_mb": 750.0})[0] == "[警戒]")
     check("リポジトリ900MB超で [警戒]", judge({**base, "repo_mb": 950.0})[0] == "[警戒]")
+    check("見送りの印が読めないと [失敗]", judge({**base, "bad_marks": 1})[0] == "[失敗]")
     print("自己テスト: " + ("すべて合格" if ok else "不合格あり"))
     return 0 if ok else 1
 
@@ -319,9 +409,13 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="消さずに一覧だけ出す")
     ap.add_argument("--selftest", action="store_true", help="判定部分を壊したデータで試す")
+    ap.add_argument("--skip", metavar="PACK", help="見送りの印（skipped.json）を置くだけ。のみさんのOKの後に使う")
+    ap.add_argument("--reason", default="", help="--skip の理由（必須）")
     a = ap.parse_args()
     if a.selftest:
         sys.exit(selftest())
+    if a.skip:
+        sys.exit(mark_skipped(a.skip, a.reason))
     try:
         sys.exit(run(a.dry_run))
     except Exception as e:

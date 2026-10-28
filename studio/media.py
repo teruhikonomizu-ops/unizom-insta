@@ -5,6 +5,9 @@
 - check_readings: 各文の「実際の読み」をカタカナで返す（ひらがなに開くと は→ワ と誤読する事故があった）
 - make_audio: BGMをコードで作曲し、声・冒頭動画の環境音と混ぜる（声の間はBGMを下げる）
 - compose: 黒地＋冒頭動画＋コマ連番＋音 → 1080×1920/30fps の mp4
+
+🔴 待ち時間の上限（2026-10-28 総点検 中14）: AivisSpeech は1回60〜180秒・ffmpeg は合成30分／一覧10分。
+   固まっても例外で止まる（制作全体の締め切りは studio_reel.py の DEADLINE_SEC）。
 """
 import io, json, os, subprocess, time, wave, urllib.parse, urllib.request
 from pathlib import Path
@@ -34,7 +37,7 @@ def start_engine(timeout=180):
 
 def _query(text, spk, extra):
     u = f"{AIVIS}/audio_query?" + urllib.parse.urlencode({"text": text, "speaker": spk})
-    q = json.load(urllib.request.urlopen(urllib.request.Request(u, method="POST")))
+    q = json.load(urllib.request.urlopen(urllib.request.Request(u, method="POST"), timeout=60))
     q.update(extra or {})
     return q
 
@@ -42,7 +45,7 @@ def _query(text, spk, extra):
 def _synth(q, spk):
     req = urllib.request.Request(f"{AIVIS}/synthesis?speaker={spk}", data=json.dumps(q).encode(),
                                  headers={"Content-Type": "application/json"}, method="POST")
-    w = wave.open(io.BytesIO(urllib.request.urlopen(req).read()))
+    w = wave.open(io.BytesIO(urllib.request.urlopen(req, timeout=180).read()))
     return np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32), w.getframerate()
 
 
@@ -187,9 +190,9 @@ def compose(work, total, out, hook_video=None, hook_until=4.4):
     cmd += ["-filter_complex", fc, "-map", "[v]", "-map", amap, "-c:v", "libx264", "-preset", "slow", "-crf", "18",
             "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-shortest",
             "-movflags", "+faststart", str(out)]
-    subprocess.run(cmd, check=True)
+    subprocess.run(cmd, check=True, timeout=1800)
 
 
 def contact_sheet(video, out, cols=8, fps=1, width=180):
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(video), "-vf", f"fps={fps},scale={width}:-1,tile={cols}x5",
-                    "-frames:v", "1", str(out)], check=True)
+                    "-frames:v", "1", str(out)], check=True, timeout=600)
