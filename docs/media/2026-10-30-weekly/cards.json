@@ -1,0 +1,18 @@
+{
+  "format": "feed",
+  "cards": [
+    {
+      "src": "raw/1.jpg",
+      "out": "1.jpg",
+      "kicker": "容量の選び方",
+      "lines": [
+        "20Lと30L",
+        "どっち？"
+      ],
+      "subs": [
+        "1つで切り替えできます"
+      ],
+      "line_size": 96
+    }
+  ]
+}
