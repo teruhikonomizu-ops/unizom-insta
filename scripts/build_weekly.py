@@ -29,6 +29,8 @@ import shutil
 import subprocess
 import sys
 
+import sale_check
+
 # 無人実行では security-guidance の見直し（Stop・コミット時）を止める＝頼んでいない修正を始めさせない（2026-10-29 のみさん決定）
 # studio_reel.py もこのファイルを import するので、ここ1か所で両方に効く
 os.environ["ENABLE_CODE_SECURITY_REVIEW"] = "0"
@@ -85,7 +87,7 @@ def run_claude(topic, reel=False):
     body = (
         PROMPT.read_text(encoding="utf-8")
         + "\n\n---\n\n# 今回のネタ\n\n```json\n"
-        + json.dumps(topic, ensure_ascii=False, indent=2)
+        + json.dumps({k: v for k, v in topic.items() if not k.startswith("_")}, ensure_ascii=False, indent=2)
         + "\n```\n"
     )
     if reel:
@@ -233,7 +235,8 @@ def main():
 
     topics = load(TOPICS)
     stock = load(STOCK_INDEX)
-    topic = pick_topic(topics, args.topic, reel=args.reel)
+    # セールの日はセールのお知らせを優先する（2026-10-30 のみさん指示・判定は sale_check.py）
+    topic = sale_check.choose_topic(sys.modules[__name__], topics, args.topic, args.reel, args.pack)
     print(f"ネタ: {topic['id']} / {topic['テーマ']}" + ("  [リール]" if args.reel else ""))
 
     written = run_claude(topic, reel=args.reel)
@@ -246,6 +249,7 @@ def main():
 
     # --- キャプション ---
     (pack_dir / "caption.txt").write_text(written["caption"].strip() + "\n", encoding="utf-8")
+    sale_check.save_sale_note(pack_dir, topic)
 
     # --- 素材を選んで並べる ---
     # ネタに「商品」があれば、表紙＝商品写真、偶数枚目＝商品の動画カット（リール）か商品写真、

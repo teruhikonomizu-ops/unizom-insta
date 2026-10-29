@@ -47,7 +47,7 @@ def hexc(h):
     return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
 
 
-def fit(im):
+def fit(im, text_top=None):
     """元画像をキャンバスに収める。
 
     風景写真（縦横比が近い）はセンタークロップ。
@@ -73,8 +73,18 @@ def fit(im):
         fh = int(h * fw / w)
         fg = im.resize((fw, fh), Image.LANCZOS)
         top_room = H - BOTTOM_PAD - 260          # 文字ブロックの上端のだいたいの位置
+        x = 0
+        if text_top is not None:
+            # 文字ブロックの実際の上端より上に収める（2026-10-30: 白地の横長写真が文字の下まで伸び、
+            # 「Amazon×楽天」の白文字が白地に重なって読めなかった）
+            top_room = text_top - 30
+            if fh > top_room - 60:
+                fh = max(200, top_room - 60)
+                fw = int(w * fh / h)
+                fg = im.resize((fw, fh), Image.LANCZOS)
+                x = (W - (RIGHT_SAFE // 2 if RIGHT_SAFE else 0) - fw) // 2
         y = max(60, (top_room - fh) // 2 + 40)
-        bg.paste(fg, (0, y))
+        bg.paste(fg, (x, y))
         return bg
     if w / h > target:                       # 横に広い → 左右を削る
         new_w = int(h * target)
@@ -184,13 +194,10 @@ def render(post_dir, card):
         # 動画は ffmpeg 側で敷く。ここでは「暗いグラデーション＋文字」だけの透明レイヤーを作る
         im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     else:
-        with Image.open(src) as raw:
-            im = fit(raw.convert("RGB"))
-
-    im = add_scrim(im, card.get("scrim", 0.82), card.get("scrim_height", 0.58))
-    draw = ImageDraw.Draw(im)
+        im = None
 
     reel = RIGHT_SAFE > 0
+    draw = ImageDraw.Draw(Image.new("RGB", (W, H)))   # 先に文字の高さを測るための仮の画用紙
     fonts = {
         "kicker": ImageFont.truetype(FONT_BOLD, card.get("kicker_size", 48 if reel else 40)),
         "line": ImageFont.truetype(FONT_BOLD, card.get("line_size", 104)),
@@ -207,6 +214,12 @@ def render(post_dir, card):
             size -= 4
             fonts["line"] = ImageFont.truetype(FONT_BOLD, size)
     sized, total = text_block(draw, card, fonts)
+
+    if im is None:
+        with Image.open(src) as raw:
+            im = fit(raw.convert("RGB"), text_top=H - BOTTOM_PAD - total)
+    im = add_scrim(im, card.get("scrim", 0.82), card.get("scrim_height", 0.58))
+    draw = ImageDraw.Draw(im)
 
     y = H - BOTTOM_PAD - total
     if y < 40:

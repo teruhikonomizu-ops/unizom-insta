@@ -162,7 +162,7 @@ def writer_prompt(topic, cut, photos, history):
         (STUDIO / "STUDIO.md").read_text(encoding="utf-8"),
         "---\n# キャプション指示書（caption は これに従う。『出力の形』『画像に載せる文字』『リールのとき』の節は無視し、出力は上の形）\n\n"
         + bw.PROMPT.read_text(encoding="utf-8"),
-        "---\n# 今回のネタ\n```json\n" + json.dumps(topic, ensure_ascii=False, indent=1) + "\n```",
+        "---\n# 今回のネタ\n```json\n" + json.dumps({k: v for k, v in topic.items() if not k.startswith("_")}, ensure_ascii=False, indent=1) + "\n```",
         "---\n# 使える素材\n## 切り抜き（cutout:<id>）\n```json\n" + json.dumps(cut, ensure_ascii=False, indent=1)
         + "\n```\n## 写真（stock:<id>・photoCard か coverImg で使う）\n```json\n" + json.dumps(photos, ensure_ascii=False, indent=1) + "\n```",
         "---\n# 最近使った画風（同じ並びにしない）\n```json\n" + json.dumps(history[-4:], ensure_ascii=False, indent=1) + "\n```",
@@ -484,7 +484,7 @@ def main():
     deadline = start_deadline(args.pack, work)
     try:
         with Heartbeat():
-            topics = bw.load(bw.TOPICS); topic = bw.pick_topic(topics, args.topic, reel=True)
+            topics = bw.load(bw.TOPICS); topic = bw.sale_check.choose_topic(bw, topics, args.topic, True, args.pack)   # セールの日はセールのお知らせを優先（2026-10-30）
             log(f"ネタ: {topic['id']} / {topic['テーマ']}")
             history = json.loads(HISTORY.read_text(encoding="utf-8")) if HISTORY.exists() else []
             cut, photos = catalog(topic)
@@ -588,6 +588,7 @@ def main():
             out_dir.mkdir(parents=True)
             shutil.copy(mp4, out_dir / "1.mp4")
             (out_dir / "caption.txt").write_text(d["caption"].strip() + "\n", encoding="utf-8")
+            bw.sale_check.save_sale_note(out_dir, topic)
             (out_dir / "studio.json").write_text(json.dumps({"topic_id": topic["id"], "style_plan": d.get("style_plan"), "script": d["script"],
                                                              "assets": d.get("assets"), "higgsfield": d.get("higgsfield")}, ensure_ascii=False, indent=1), encoding="utf-8")
             today = datetime.date.today().isoformat()

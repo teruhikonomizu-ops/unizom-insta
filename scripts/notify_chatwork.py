@@ -207,6 +207,21 @@ def build_report():
         media = sorted(p.name for p in pack.iterdir() if p.suffix.lower() in (".jpg", ".mp4"))
         lines.append(f"[承認待ち] {today} {pack.name}")
         lines.append(f"見出し: {caption.split(chr(10))[0][:60]}")
+        # セールの日はセールのお知らせに差し替わる（2026-10-30・sale_check.py が sale.json を置く）
+        sale_file = pack / "sale.json"
+        if sale_file.exists():
+            try:
+                sale = json.loads(sale_file.read_text(encoding="utf-8-sig"))
+                if sale.get("sales"):
+                    lines.append("セール: ネタ帳の代わりにセールのお知らせにした（"
+                                 + "／".join(f"{s['name']} {s['period']}" for s in sale["sales"]) + "）")
+                for sk in sale.get("skipped", []):
+                    lines.append(f"セール: {sk['store']}「{sk['name']}」は{sk['reason']}のため載せなかった"
+                                 "（確定したらカレンダーの題名から「予定・要確定」を外すと次から載る）")
+                for err in sale.get("errors", []):
+                    lines.append(f"セールの確認: {err}（セールがあっても載っていない恐れ）")
+            except (ValueError, KeyError):
+                lines.append("セールの確認: sale.json が読めなかった")
         note = todays_note()
         if note:
             lines.append(f"注意: {note}")
