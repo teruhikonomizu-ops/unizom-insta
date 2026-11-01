@@ -1,11 +1,18 @@
 {
-    "pack":  "2026-10-16-prime-honban",
-    "posts":  [
-                  {
-                      "posted_at":  "2026-10-15T22:51:01Z",
-                      "run_id":  38819756911,
-                      "media_id":  "17951883072050243",
-                      "permalink":  "https://www.instagram.com/reel/DeiEidbDdG-/"
-                  }
-              ]
+  "pack": "2026-10-16-prime-honban",
+  "posts": [
+    {
+      "posted_at": "2026-10-15T22:51:01Z",
+      "run_id": 38819756911,
+      "media_id": "17951883072050243",
+      "permalink": "https://www.instagram.com/reel/DeiEidbDdG-/"
+    }
+  ],
+  "片付け": {
+    "日時": "2026-11-02 07:15",
+    "消した物": [
+      "1.mp4"
+    ],
+    "MB": 13.7
+  }
 }
