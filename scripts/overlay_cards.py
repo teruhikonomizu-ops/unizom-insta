@@ -263,7 +263,9 @@ def render_panel(post_dir, card, src):
 
     panel_top, panel_bottom = head_bottom + 10, sub_top - 36
     if panel_bottom - panel_top < 380:
-        raise SystemExit(f"文字が多すぎて写真の枠が取れない: {card['out']}（枠の高さ {panel_bottom - panel_top}px）")
+        # 止めずに従来の型（写真に文字を載せる）へ戻す＝金曜の自動作成を落とさない
+        print(f"白い枠の型は文字が多すぎて枠が取れない（{panel_bottom - panel_top}px）→従来の型で作る: {card['out']}")
+        return False
     d.rounded_rectangle([MARGIN_X, panel_top, W - MARGIN_X, panel_bottom], radius=36, fill=(255, 255, 255))
     ph = _trim_photo(src, W - MARGIN_X * 2, panel_bottom - panel_top)
     im.paste(ph, ((W - ph.width) // 2, panel_top + (panel_bottom - panel_top - ph.height) // 2), ph)
@@ -295,7 +297,8 @@ def render(post_dir, card):
         # 白地の商品写真は、写真の上に白文字を載せると読めない（2026-11-06 のみさん指摘
         # 「白背景の文字も見にくい」）。黒地＋赤の帯の上に、白い枠に入れた写真と文字を分けて置く。
         if card.get("style") == "panel" or is_light_photo(src):
-            return render_panel(post_dir, card, src)
+            if render_panel(post_dir, card, src) is not False:
+                return
     draw = ImageDraw.Draw(Image.new("RGB", (W, H)))   # 先に文字の高さを測るための仮の画用紙
     fonts = {
         "kicker": ImageFont.truetype(FONT_BOLD, card.get("kicker_size", 48 if reel else 40)),
