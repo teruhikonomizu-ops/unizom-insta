@@ -186,6 +186,100 @@ def text_block(draw, card, fonts):
 
 VIDEO_EXTS = (".mp4", ".mov")
 
+# ---- 白い枠の型（フィードの白地の商品写真用・2026-11-06追加） ----
+# 縁の明るさ（0〜255）がこれ以上なら「白地・スタジオ地の写真」とみなす。
+# 実測: 白地の商品写真 200〜255／風景写真（stock/images）最大168（iso-sunrise）。
+LIGHT_EDGE = 200
+BG_DARK = (17, 17, 17)
+
+
+def is_light_photo(src):
+    from PIL import ImageStat
+    with Image.open(src) as raw:
+        g = raw.convert("L")
+        w, h = g.size
+        b = max(4, min(w, h) // 40)
+        strips = [g.crop((0, 0, w, b)), g.crop((0, h - b, w, h)), g.crop((0, 0, b, h)), g.crop((w - b, 0, w, h))]
+        return sum(ImageStat.Stat(s).mean[0] for s in strips) / 4 >= LIGHT_EDGE
+
+
+def _trim_photo(src, box_w, box_h, pad=28):
+    """白い余白を詰めて枠に収める。地が白でない写真は角を丸めて、はめ込み写真に見せる。"""
+    from PIL import ImageOps
+    im = ImageOps.exif_transpose(Image.open(src)).convert("RGBA")
+    mask = im.convert("L").point(lambda v: 255 if v < 245 else 0)
+    bbox = mask.getbbox()
+    if bbox:
+        m = 20
+        im = im.crop((max(0, bbox[0] - m), max(0, bbox[1] - m),
+                      min(im.width, bbox[2] + m), min(im.height, bbox[3] + m)))
+    s = min((box_w - pad * 2) / im.width, (box_h - pad * 2) / im.height)
+    im = im.resize((max(1, int(im.width * s)), max(1, int(im.height * s))), Image.LANCZOS)
+    if im.convert("L").getpixel((2, 2)) < 240:
+        rm = Image.new("L", im.size, 0)
+        ImageDraw.Draw(rm).rounded_rectangle([0, 0, im.width - 1, im.height - 1], radius=24, fill=255)
+        im.putalpha(rm)
+    return im
+
+
+def render_panel(post_dir, card, src):
+    accent = hexc(card.get("accent", "#D63036"))
+    im = Image.new("RGB", (W, H), BG_DARK)
+    band = Image.new("RGBA", (W * 2, 70), accent + (255,)).rotate(-28, expand=True)
+    im.paste(band, (-200, -560), band)       # 右上の斜めの赤い帯
+    d = ImageDraw.Draw(im)
+    limit = W - MARGIN_X * 2
+
+    y = 70
+    if card.get("kicker"):
+        f = ImageFont.truetype(FONT_BOLD, card.get("kicker_size", 38))
+        asc, desc = f.getmetrics()
+        tw = d.textlength(card["kicker"], font=f)
+        d.rounded_rectangle([MARGIN_X, y, MARGIN_X + tw + 44, y + asc + desc + 12], radius=10, fill=accent)
+        d.text((MARGIN_X + 22, y + 4), card["kicker"], font=f, fill=(255, 255, 255))
+        y += asc + desc + 36
+
+    # 見出し: 各行が1行に収まるまで縮める（下限72px）。それでも長い時だけ折り返す
+    size = min(card.get("line_size", 104), 104)
+    lf = ImageFont.truetype(FONT_BOLD, size)
+    while size > 72 and any(not _fits(d, ln, lf, limit) for ln in card.get("lines", [])):
+        size -= 4
+        lf = ImageFont.truetype(FONT_BOLD, size)
+    asc, desc = lf.getmetrics()
+    for line in card.get("lines", []):
+        for piece in wrap(d, line, lf, limit):
+            d.text((MARGIN_X - 4, y), piece, font=lf, fill=(255, 255, 255))
+            y += int((asc + desc) * 1.12)
+    head_bottom = y + 20
+
+    # 説明: 下から積む（1行目は白の太字、2行目以降は明るいグレー）
+    subs = []
+    for k, sub in enumerate(card.get("subs", [])):
+        sf = ImageFont.truetype(FONT_BOLD if k == 0 else FONT_MED, card.get("sub_size", 44 if k == 0 else 36))
+        for piece in wrap(d, sub, sf, limit):
+            subs.append((piece, sf, (255, 255, 255) if k == 0 else (205, 205, 205)))
+    subs_h = sum(int(sum(f.getmetrics()) * 1.45) for _, f, _ in subs)
+    sub_top = H - 80 - subs_h
+
+    panel_top, panel_bottom = head_bottom + 10, sub_top - 36
+    if panel_bottom - panel_top < 380:
+        raise SystemExit(f"文字が多すぎて写真の枠が取れない: {card['out']}（枠の高さ {panel_bottom - panel_top}px）")
+    d.rounded_rectangle([MARGIN_X, panel_top, W - MARGIN_X, panel_bottom], radius=36, fill=(255, 255, 255))
+    ph = _trim_photo(src, W - MARGIN_X * 2, panel_bottom - panel_top)
+    im.paste(ph, ((W - ph.width) // 2, panel_top + (panel_bottom - panel_top - ph.height) // 2), ph)
+    d = ImageDraw.Draw(im)
+
+    y = sub_top
+    for piece, f, color in subs:
+        tw = d.textlength(piece, font=f)
+        d.text(((W - tw) / 2, y), piece, font=f, fill=color)
+        y += int(sum(f.getmetrics()) * 1.45)
+
+    out = os.path.join(post_dir, card["out"])
+    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
+    im.save(out, "JPEG", quality=92, optimize=True, progressive=True)
+    print(f"saved {card['out']}  ({os.path.getsize(out) // 1024} KB) [白い枠の型]")
+
 
 def render(post_dir, card):
     src = os.path.join(post_dir, card["src"])
@@ -197,6 +291,11 @@ def render(post_dir, card):
         im = None
 
     reel = RIGHT_SAFE > 0
+    if not is_video and not reel and card.get("style", "auto") != "overlay":
+        # 白地の商品写真は、写真の上に白文字を載せると読めない（2026-11-06 のみさん指摘
+        # 「白背景の文字も見にくい」）。黒地＋赤の帯の上に、白い枠に入れた写真と文字を分けて置く。
+        if card.get("style") == "panel" or is_light_photo(src):
+            return render_panel(post_dir, card, src)
     draw = ImageDraw.Draw(Image.new("RGB", (W, H)))   # 先に文字の高さを測るための仮の画用紙
     fonts = {
         "kicker": ImageFont.truetype(FONT_BOLD, card.get("kicker_size", 48 if reel else 40)),
