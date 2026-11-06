@@ -215,7 +215,7 @@ def _trim_photo(src, box_w, box_h, pad=28):
                       min(im.width, bbox[2] + m), min(im.height, bbox[3] + m)))
     s = min((box_w - pad * 2) / im.width, (box_h - pad * 2) / im.height)
     im = im.resize((max(1, int(im.width * s)), max(1, int(im.height * s))), Image.LANCZOS)
-    if im.convert("L").getpixel((2, 2)) < 240:
+    if im.width > 2 and im.height > 2 and im.convert("L").getpixel((2, 2)) < 240:
         rm = Image.new("L", im.size, 0)
         ImageDraw.Draw(rm).rounded_rectangle([0, 0, im.width - 1, im.height - 1], radius=24, fill=255)
         im.putalpha(rm)
@@ -296,9 +296,12 @@ def render(post_dir, card):
     if not is_video and not reel and card.get("style", "auto") != "overlay":
         # 白地の商品写真は、写真の上に白文字を載せると読めない（2026-11-06 のみさん指摘
         # 「白背景の文字も見にくい」）。黒地＋赤の帯の上に、白い枠に入れた写真と文字を分けて置く。
-        if card.get("style") == "panel" or is_light_photo(src):
-            if render_panel(post_dir, card, src) is not False:
-                return
+        try:
+            if card.get("style") == "panel" or is_light_photo(src):
+                if render_panel(post_dir, card, src) is not False:
+                    return
+        except Exception as e:  # 白い枠の型で何が起きても従来の型へ戻す＝金曜の自動作成を落とさない
+            print(f"白い枠の型で失敗（{type(e).__name__}: {e}）→従来の型で作る: {card['out']}")
     draw = ImageDraw.Draw(Image.new("RGB", (W, H)))   # 先に文字の高さを測るための仮の画用紙
     fonts = {
         "kicker": ImageFont.truetype(FONT_BOLD, card.get("kicker_size", 48 if reel else 40)),

@@ -134,13 +134,20 @@ def run_claude(topic, reel=False):
             continue
         if data.get("caption") and data.get("cards"):
             # 枚数が足りなければ書き直させる（2026-11-06 のみさん「1枚は寂しい」）。最後の回はそのまま使う＝投稿を止めない
-            if len(data["cards"]) < 4 and attempt < 3:
-                print(f"カードが{len(data['cards'])}枚しかないので書き直させる（{attempt}回目）", file=sys.stderr)
+            # 上限＝Instagramのカルーセルは10枚まで（それを超えると承認後の投稿で初めて止まる）
+            n_cards = len(data["cards"])
+            if (n_cards < 4 or n_cards > 10) and attempt < 3:
+                print(f"カードが{n_cards}枚なので書き直させる（{attempt}回目）", file=sys.stderr)
                 body += (
-                    f"\n\n【重要】前回の cards は {len(data['cards'])} 枚だった。4〜6枚にすること"
+                    f"\n\n【重要】前回の cards は {n_cards} 枚だった。4〜6枚にすること"
                     "（1枚目＝表紙、2枚目以降＝詳細を1枚1つ、最後＝締め）。"
                 )
+                ng = caption_ng(data["caption"])   # 禁止語も同じ回で直させる（別々の回を使い切らない）
+                if ng:
+                    body += "\nあわせて、キャプションの下のNGの語を使わずに書き直すこと。\n" + ng
                 continue
+            if n_cards > 10:
+                data["cards"] = data["cards"][:10]
             # 禁止語に当たったら、NG一覧を見せて書き直させる（2026-09-22追加）。
             # 執筆役は共通の禁止語辞書を知らないので、黙って落とすと毎回同じ語で落ちる
             # （9/22の火曜リールが「実際」1語でパックごと捨てられた）。
@@ -322,8 +329,10 @@ def main():
             "kicker": c.get("kicker", ""),
             "lines": c.get("lines", []),
             "subs": c.get("subs", []),
-            "line_size": 96 if len(c.get("lines", [""])[0]) > 6 else 116,
+            "line_size": 96 if len((c.get("lines") or [""])[0]) > 6 else 116,
         }
+        if chosen.get("種類", "写真") == "写真":
+            card["style"] = "overlay"   # 風景は明るくても白い枠の型にしない（白い枠は商品写真だけ）
         if chosen.get("開始秒"):
             card["start"] = chosen["開始秒"]
         cards.append(card)
