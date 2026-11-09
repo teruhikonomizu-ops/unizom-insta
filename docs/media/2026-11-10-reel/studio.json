@@ -1,0 +1,101 @@
+{
+ "topic_id": "sale-2026-11-10",
+ "style_plan": [
+  "hook=霜の朝の実写に検索窓と大きな「いつまで？」 → 田んぼ・渓流の一語畳み掛け（rush） → 暗いスタジオに店名2つ → 赤い面に「開催中」 → 折りたたみ長靴の実写にセール名と終わる日の札2枚",
+  "amazon=設計図の線画の物差し（4〜12日） → 胸丈の現場写真 → 暗いスタジオに白フチカード（股下） → 赤い面で「11/12」へ数え上げ → 物差しの端で光る終わりの日 → 腰丈の実写（日付の札は同じ位置に残す）",
+  "rakuten=クレヨン手描きのマラソンコース → 足元と長靴の実写 → コースを走る人に日付の札 → 赤い面に「午前1:59」 → クレヨンのゴール旗に到着",
+  "lineup=長靴の実写全面 → ウェーダー3種の縦3分割 → 暗いスタジオに実写の切り抜き（インソール）＋光の走り → 赤い面に白フチカード（リュック） → 上下2分割の細部写真に店名の札",
+  "check=生成り紙のストアページの線画＋「？」 → 暗いスタジオに白フチカード → 赤い面に「？」の値札（数字なし） → 生成り紙にページ2枚を並べ、タップの波紋",
+  "end=暗いスタジオに実物ロゴ・好評発売中・終わる日のおさらい・商品カード3枚＋実物のインソール"
+ ],
+ "script": {
+  "speaker": 497929760,
+  "target_rate": 7.0,
+  "sentence_gap": 0.42,
+  "scenes": [
+   {
+    "id": "hook",
+    "show": "セールは、いつまで？ Amazonも楽天も、開催中です。",
+    "sentences": [
+     "セールは、いつまで。",
+     "アマゾンも楽天も、開催中です。"
+    ],
+    "pad": 1.2
+   },
+   {
+    "id": "amazon",
+    "show": "Amazonは、スマイルSALE。11/12(木)まで。",
+    "sentences": [
+     "アマゾンは、スマイルセール。",
+     "11月12日、木曜まで。"
+    ],
+    "pad": 0.8
+   },
+   {
+    "id": "rakuten",
+    "show": "楽天は、お買い物マラソン。11/11(水) 午前1:59まで。",
+    "sentences": [
+     "楽天は、お買い物マラソン。",
+     "11月11日、水曜の、午前1時59分まで。"
+    ],
+    "pad": 0.8
+   },
+   {
+    "id": "lineup",
+    "show": "長靴、ウェーダー、専用インソール、防水リュック。Amazonと楽天で、販売しています。",
+    "sentences": [
+     "長靴、ウェーダー、専用インソール、防水リュック。",
+     "アマゾンと楽天で、販売しています。"
+    ],
+    "pad": 0.8
+   },
+   {
+    "id": "check",
+    "show": "対象の商品や価格は、各ストアのページでご確認ください。",
+    "sentences": [
+     "対象の商品や価格は、各ストアのページで、ご確認ください。"
+    ],
+    "pad": 0.8
+   },
+   {
+    "id": "end",
+    "show": "好評発売中です。",
+    "sentences": [
+     "好評発売中です。"
+    ],
+    "pad": 2.2
+   }
+  ]
+ },
+ "assets": {
+  "frost": "stock:tanbo-frost",
+  "harvest": "stock:tanbo-after-harvest",
+  "autumn": "stock:keiryu-autumn-morning",
+  "rain": "stock:keiryu-after-rain",
+  "nwSide": "stock:nw99-side",
+  "nwWater": "stock:nw99-water",
+  "nwFold": "stock:nw99-folded",
+  "nwToe": "stock:nw99-toe",
+  "nwSole": "stock:nw99-sole",
+  "nwPair": "stock:nw99-pair",
+  "hipBoot": "stock:hipw-boot",
+  "hipWater": "stock:hipw-water",
+  "hipSole": "stock:hipw-sole",
+  "hipPair2": "stock:hipw-pair2",
+  "hwSide": "stock:hw94-side",
+  "hwStep": "stock:hw94-step",
+  "hwSole": "stock:hw94-sole",
+  "hwBuckle": "stock:hw94-buckle",
+  "hwFull": "stock:hw94-full-nojacket",
+  "chestWall": "stock:chest-scene-wall",
+  "chestBack": "stock:chest-back",
+  "chestBoot": "stock:chest-boot",
+  "chestSusp": "stock:chest-suspender",
+  "chestFront": "stock:chest-front",
+  "bagBack": "stock:bag-back",
+  "bagHero": "stock:bag-hero",
+  "insoleDuo": "cutout:insole-duo-38",
+  "logo": "cutout:unizom-logo"
+ },
+ "higgsfield": {}
+}
