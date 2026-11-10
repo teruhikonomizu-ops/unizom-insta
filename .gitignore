@@ -4,3 +4,4 @@ work/
 .env
 *.token
 _予約投稿結果.txt
+**/.claude/settings.local.json*
