@@ -106,9 +106,12 @@ def read_calendar(post_date):
     for attempt in (1, 2):
         try:
             r = subprocess.run(
-                # 読むだけ＝カレンダーの一覧を読む道具1つしか渡さない
-                [exe, "-p", "--model", "haiku", "--permission-mode", "dontAsk", "--allowedTools", LIST_TOOL,
-                 "--output-format", "stream-json", "--verbose"],
+                # 読むだけ＝カレンダーの一覧を読む道具1つしか渡さない。
+                # 🔴 --tools "" を外さない（2026-11-10 総点検 中1）: dontAsk だけだと、このPCの設定の常時許可
+                #    （gh workflow run publish 等の Bash）がこの haiku にも効き、予定の文に仕込みがあると承認なしの投稿につながる。
+                #    --tools "" で Bash・Read 等の内蔵の道具を全部無くす（カレンダーは外の道具なので残る＝hf_balance と同じ形）。
+                [exe, "-p", "--model", "haiku", "--tools", "", "--permission-mode", "dontAsk", "--allowedTools", LIST_TOOL,
+                 "--no-session-persistence", "--output-format", "stream-json", "--verbose"],
                 input=prompt, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=240,
             )
         except subprocess.TimeoutExpired:
