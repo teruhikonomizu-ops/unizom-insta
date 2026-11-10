@@ -213,6 +213,11 @@ def build_report():
             try:
                 sale = json.loads(sale_file.read_text(encoding="utf-8-sig"))
                 if sale.get("sales"):
+                    # 2026-11-10 総点検 中19: 承認が遅れると「開催中」「明日から」が事実と違うまま出る＝期限を言う
+                    pu = str(sale.get("publish_until") or "")
+                    if len(pu) >= 16 and pu[4] == "-" and pu[10] == "T":
+                        lines.append("セール: このパックを出してよいのは {0}/{1} {2} まで（過ぎると投稿の道具が止める）".format(
+                            int(pu[5:7]), int(pu[8:10]), pu[11:16]))
                     lines.append("セール: ネタ帳の代わりにセールのお知らせにした（"
                                  + "／".join(f"{s['name']} {s['period']}" for s in sale["sales"]) + "）")
                 for sk in sale.get("skipped", []):

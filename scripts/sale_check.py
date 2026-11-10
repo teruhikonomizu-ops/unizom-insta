@@ -67,6 +67,15 @@ def _wd(d):
     return "月火水木金土日"[d.weekday()]
 
 
+def _until(post_date, when, last, end_time="23:59"):
+    """そのお知らせを出してよい最後の日時（日本時間）。2026-11-10 総点検 中19＝承認が遅れると
+    「開催中」「明日から」が事実と違うまま出る形だった。
+    開催中＝セールの終わりまで／「明日から」「今夜◯時から」は投稿日から見た言い方＝投稿日のうち"""
+    if when == "開催中":
+        return f"{last.isoformat()}T{end_time}:00+09:00"
+    return f"{post_date.isoformat()}T23:59:00+09:00"
+
+
 def clean_amazon_name(title):
     t = re.sub(r"^.*?【Amazonセール】", "", title)
     t = re.sub(r"[｜|]Claude\s*$", "", t).strip()
@@ -217,7 +226,8 @@ def amazon_sales(post_date, events):
                 continue
             out.remove(dup)
         out.append({"store": "Amazon", "name": name, "start": s.isoformat(), "last": last.isoformat(), "when": when,
-                    "period": f"{_md(s)}({_wd(s)})〜{_md(last)}({_wd(last)})"})
+                    "period": f"{_md(s)}({_wd(s)})〜{_md(last)}({_wd(last)})",
+                    "until": _until(post_date, when, last)})
     return out, skipped
 
 
@@ -249,7 +259,8 @@ def rakuten_sales(post_date):
         name = e["name"]
         name = name if name.startswith("楽天") else "楽天" + name
         out.append({"store": "楽天", "name": name, "start": s.isoformat(), "last": en.isoformat(), "when": when,
-                    "period": f"{_md(s)}({_wd(s)}) {st_t}〜{_md(en)}({_wd(en)}) {en_t}"})
+                    "period": f"{_md(s)}({_wd(s)}) {st_t}〜{_md(en)}({_wd(en)}) {en_t}",
+                    "until": _until(post_date, when, en, en_t)})
     return out, errors
 
 
@@ -351,9 +362,12 @@ def save_sale_note(pack_dir, topic):
     if not res:
         return
     keep = {"post_date": res["post_date"],
-            "sales": [{k: s[k] for k in ("store", "name", "period", "when")} for s in res["sales"]],
+            "sales": [{k: s[k] for k in ("store", "name", "period", "when", "until") if k in s} for s in res["sales"]],
             "skipped": res.get("skipped", []),
             "errors": res.get("errors", [])}
+    untils = [s["until"] for s in keep["sales"] if s.get("until")]
+    if untils:   # このパックを出してよい最後の日時＝一番早く切れる物（publish_post.py が過ぎていたら止める）
+        keep["publish_until"] = min(untils)
     pathlib.Path(pack_dir, "sale.json").write_text(json.dumps(keep, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
 

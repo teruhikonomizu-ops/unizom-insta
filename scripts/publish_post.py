@@ -13,6 +13,8 @@
 """
 
 import argparse
+import datetime
+import json
 import pathlib
 import sys
 
@@ -22,6 +24,36 @@ PAGES_BASE = "https://teruhikonomizu-ops.github.io/unizom-insta/media"
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 IMAGE_EXTS = {".jpg", ".jpeg"}
 VIDEO_EXTS = {".mp4"}
+JST = datetime.timezone(datetime.timedelta(hours=9))
+
+
+def sale_deadline(pack, now=None):
+    """セールのお知らせのパックが、出してよい期限を過ぎていないか（2026-11-10 総点検 中19）。
+    戻り値＝(期限切れか, 説明)。セールのお知らせでなければ (False, "")。
+    sale.json は sale_check.py が置く。publish_until が無い前のパックは投稿日のうちだけ"""
+    f = REPO_ROOT / "docs" / "media" / pack / "sale.json"
+    if not f.is_file():
+        return False, ""
+    now = now or datetime.datetime.now(JST)
+    try:
+        sale = json.loads(f.read_text(encoding="utf-8-sig"))
+        if not sale.get("sales"):
+            return False, ""
+        until = sale.get("publish_until")
+        if until:
+            limit = datetime.datetime.fromisoformat(until)
+        else:
+            limit = datetime.datetime.combine(datetime.date.fromisoformat(sale["post_date"]), datetime.time(23, 59))
+        if limit.tzinfo is None:
+            limit = limit.replace(tzinfo=JST)
+        names = "／".join("{0}（{1}）".format(s.get("name"), s.get("when")) for s in sale["sales"])
+    except (ValueError, KeyError, TypeError, AttributeError) as e:
+        return True, f"sale.json が読めない（{type(e).__name__}）＝セールのお知らせの期限を確かめられない"
+    limit = limit.astimezone(JST)
+    label = f"{limit.month}/{limit.day} {limit:%H:%M}"
+    if now > limit:
+        return True, f"セールのお知らせ（{names}）を出してよい期限 {label} を過ぎている"
+    return False, f"セールのお知らせ（{names}）＝出してよいのは {label} まで"
 
 
 def load_pack(pack):
@@ -119,12 +151,23 @@ def main():
         action="store_true",
         help="コンテナ作成までで止める（投稿しない）",
     )
+    ap.add_argument(
+        "--force",
+        action="store_true",
+        help="セールのお知らせの期限切れでも投稿する（のみさんが期間を確かめた時だけ）",
+    )
     args = ap.parse_args()
 
     caption, media = load_pack(args.pack)
     print(f"パック: {args.pack}")
     print(f"メディア: {[p.name for p in media]}")
     print(f"キャプション: {len(caption)}文字")
+
+    expired, note = sale_deadline(args.pack)
+    if note:
+        print(("注意: " if expired else "") + note)
+    if expired and not args.dry_run and not args.force:
+        raise SystemExit(f"NG: {note}。投稿しなかった（期間を確かめた上で出す時だけ --force）")
 
     used = ig_api.publish_limit()
     print(f"直近24時間の投稿数: {used} / 100")
