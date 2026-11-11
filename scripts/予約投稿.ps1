@@ -80,7 +80,8 @@ try {
   $posted = @{ pack = $Pack; posts = @(@{ media_id = $mid; permalink = $url; posted_at = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"); run_id = $runId }) } | ConvertTo-Json -Depth 4
   [System.IO.File]::WriteAllText((Join-Path $repo "docs\media\$Pack\posted.json"), $posted, (New-Object System.Text.UTF8Encoding $false))
   git add "docs/media/$Pack/posted.json" 2>$null | Out-Null
-  git -c user.name="unizom-insta bot" -c user.email="teruhiko.nomizu@gmail.com" commit -q -m "予約投稿した: $Pack $url" 2>$null | Out-Null
+  # 差出人は GitHub の匿名アドレス（公開リポジトリの記録に本物のメールを残さない・2026-11-11 総点検）
+  git -c user.name="unizom-insta bot" -c user.email="285088708+teruhikonomizu-ops@users.noreply.github.com" commit -q -m "予約投稿した: $Pack $url" 2>$null | Out-Null
   git pull -q --rebase --autostash 2>$null | Out-Null
   git push -q 2>$null | Out-Null
 

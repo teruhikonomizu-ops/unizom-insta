@@ -145,7 +145,8 @@ try {
       #    組み合わさってPowerShellのパーサが壊れる（2026-08-13に実際に起きた）。
       $msg = "投稿パックを作った: $today-$suffix（自動生成。まだ投稿していない。承認待ち）"
       $null = GitRun add -A
-      $null = GitRun -c user.name="unizom-insta bot" -c user.email="teruhiko.nomizu@gmail.com" commit -q -m $msg
+      # 差出人は GitHub の匿名アドレス（公開リポジトリの記録に本物のメールを残さない・2026-11-11 総点検）
+      $null = GitRun -c user.name="unizom-insta bot" -c user.email="285088708+teruhikonomizu-ops@users.noreply.github.com" commit -q -m $msg
       if ((GitRun push -q) -eq 0) {
         Note "pushした"
         Result "成功" "$today-$suffix を作った（未投稿・承認待ち）$studioNote"

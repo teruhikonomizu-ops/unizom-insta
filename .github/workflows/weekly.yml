@@ -85,7 +85,7 @@ jobs:
         if: steps.guard.outputs.skip == 'false' && steps.name.outputs.test == 'false'
         run: |
           git config user.name "unizom-insta bot"
-          git config user.email "teruhiko.nomizu@gmail.com"
+          git config user.email "285088708+teruhikonomizu-ops@users.noreply.github.com"   # GitHub の匿名アドレス（2026-11-11）
           git add -A
           if git diff --cached --quiet; then
             echo "変更なし"

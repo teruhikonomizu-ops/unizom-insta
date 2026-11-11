@@ -67,7 +67,8 @@ try {
   if ($code -eq 0) {
     $null = GitRun add "docs/media/$pack" topics.json stock/index.json studio/history.json
     $msg = "投稿パックを作った: $pack（高品質版・リール・スタジオ。まだ投稿していない。承認待ち）"
-    $null = GitRun -c user.name="unizom-insta bot" -c user.email="teruhiko.nomizu@gmail.com" commit -q -m $msg
+    # 差出人は GitHub の匿名アドレス（公開リポジトリの記録に本物のメールを残さない・2026-11-11 総点検）
+    $null = GitRun -c user.name="unizom-insta bot" -c user.email="285088708+teruhikonomizu-ops@users.noreply.github.com" commit -q -m $msg
     # 制作のあいだにクラウド側のコミット（トークン延長など）が入っていても push できるよう、直前に取り込む
     # 衝突したら途中状態で残さず元に戻す（残すと翌週以降の取り込みが毎回失敗する）
     if ((GitRun pull --rebase --autostash -q) -ne 0) { $null = GitRun rebase --abort }
