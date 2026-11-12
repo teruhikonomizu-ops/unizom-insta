@@ -22,27 +22,14 @@
         "コンパクトに"
       ],
       "subs": [
-        "使わない時は",
-        "折りたたんでしまえます"
+        "折りたたんで",
+        "車や物置にもしまえます"
       ],
       "line_size": 116
     },
     {
       "src": "raw/3.jpg",
       "out": "3.jpg",
-      "kicker": "しまう",
-      "lines": [
-        "場所を取りにくい"
-      ],
-      "subs": [
-        "車や物置でも",
-        "置き場所に困りにくい"
-      ],
-      "line_size": 96
-    },
-    {
-      "src": "raw/4.jpg",
-      "out": "4.jpg",
       "kicker": "履く",
       "lines": [
         "広げて履く",
@@ -54,8 +41,8 @@
       "line_size": 116
     },
     {
-      "src": "raw/5.jpg",
-      "out": "5.jpg",
+      "src": "raw/4.jpg",
+      "out": "4.jpg",
       "kicker": "使う場面",
       "lines": [
         "釣り・農作業",
@@ -67,17 +54,19 @@
       "line_size": 116
     },
     {
-      "src": "raw/6.jpg",
-      "out": "6.jpg",
+      "src": "raw/5.jpg",
+      "out": "5.jpg",
       "kicker": "NW99",
       "lines": [
-        "Amazonで販売中"
+        "Amazon・楽天で",
+        "販売中"
       ],
       "subs": [
         "サイズ・在庫は",
         "プロフィールのリンクから"
       ],
-      "line_size": 96
+      "line_size": 96,
+      "style": "panel"
     }
   ]
 }
