@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # ref: main＝遅れて届いた実行でも、走り出した瞬間の最新を取る（ai-radio と同じ対策）
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: main
 

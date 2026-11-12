@@ -29,7 +29,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Pillowを入れる
         # 2026-11-08 のみさん承認: 部品の乗っ取り（サプライチェーン攻撃）対策で版を固定
@@ -37,7 +37,10 @@ jobs:
 
       - name: Claude Code を入れる
         # 2026-11-08 のみさん承認: 公開から3日たった版だけ入れる（部品の乗っ取り対策）
-        run: npm install -g @anthropic-ai/claude-code --min-release-age=3
+        # 2026-11-13 改修: npm の待ち期間だけだと、版が出て3日後の約4分間「本体は入るが実行ファイルが入らない」
+        #   （同日朝にラジオが落ちた原因）。本体と実行ファイルの部品の両方が3日たった版をスクリプトが選んで入れ、
+        #   claude --version が通ることまで確かめる。ai-radio の scripts/install_claude_code.py と同じ物。
+        run: python3 scripts/install_claude_code.py --days 3
 
       - name: 今週のパック名を決める
         id: name
