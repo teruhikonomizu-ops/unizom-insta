@@ -78,6 +78,8 @@ jobs:
         if: steps.guard.outputs.skip == 'false'
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # 2026-11-13 鍵を持つこの手順の中で Claude Code が自分を最新版へ更新しないように止める（ai-radio と同じ）
+          DISABLE_AUTOUPDATER: "1"
         run: |
           opt=""
           [ -n "${{ inputs.topic }}" ] && opt="--topic ${{ inputs.topic }}"

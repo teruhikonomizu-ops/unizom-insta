@@ -78,7 +78,7 @@ def claude_cmd():
         found = shutil.which(name)
         if found:
             return found
-    raise SystemExit("claude が見つからない（npm install -g @anthropic-ai/claude-code）")
+    raise SystemExit("claude が見つからない（GitHub上では python3 scripts/install_claude_code.py --days 3 で入れる。PCでは Claude Code が入っているか確かめる）")
 
 
 def run_claude(topic, reel=False):
