@@ -1,0 +1,83 @@
+{
+  "format": "feed",
+  "cards": [
+    {
+      "src": "raw/1.jpg",
+      "out": "1.jpg",
+      "kicker": "NW99",
+      "lines": [
+        "使わない時は",
+        "たためる長靴"
+      ],
+      "subs": [
+        "ひざ下丈の防水長靴"
+      ],
+      "line_size": 116
+    },
+    {
+      "src": "raw/2.jpg",
+      "out": "2.jpg",
+      "kicker": "たたむ",
+      "lines": [
+        "コンパクトに"
+      ],
+      "subs": [
+        "使わない時は",
+        "折りたたんでしまえます"
+      ],
+      "line_size": 116
+    },
+    {
+      "src": "raw/3.jpg",
+      "out": "3.jpg",
+      "kicker": "しまう",
+      "lines": [
+        "場所を取りにくい"
+      ],
+      "subs": [
+        "車や物置でも",
+        "置き場所に困りにくい"
+      ],
+      "line_size": 96
+    },
+    {
+      "src": "raw/4.jpg",
+      "out": "4.jpg",
+      "kicker": "履く",
+      "lines": [
+        "広げて履く",
+        "ひざ下丈"
+      ],
+      "subs": [
+        "防水の長靴として使えます"
+      ],
+      "line_size": 116
+    },
+    {
+      "src": "raw/5.jpg",
+      "out": "5.jpg",
+      "kicker": "使う場面",
+      "lines": [
+        "釣り・農作業",
+        "雨の日に"
+      ],
+      "subs": [
+        "使う日だけ広げて履く"
+      ],
+      "line_size": 116
+    },
+    {
+      "src": "raw/6.jpg",
+      "out": "6.jpg",
+      "kicker": "NW99",
+      "lines": [
+        "Amazonで販売中"
+      ],
+      "subs": [
+        "サイズ・在庫は",
+        "プロフィールのリンクから"
+      ],
+      "line_size": 96
+    }
+  ]
+}
