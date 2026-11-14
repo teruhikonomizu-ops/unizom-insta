@@ -42,13 +42,23 @@ jobs:
         #   claude --version が通ることまで確かめる。ai-radio の scripts/install_claude_code.py と同じ物。
         run: python3 scripts/install_claude_code.py --days 3
 
+      # 2026-11-14（10/12 総点検 低）: 手で入れる名前（test_pack・topic）は命令文に直接埋め込まず、環境変数で受け渡す。
+      #   先頭は英数字・英数字とハイフン・下線だけを通す（今までのパック名・ネタのidは全部この形）
       - name: 今週のパック名を決める
         id: name
+        env:
+          TEST_PACK: ${{ inputs.test_pack }}
+          TOPIC: ${{ inputs.topic }}
         run: |
-          if [ -n "${{ inputs.test_pack }}" ]; then
-            echo "pack=${{ inputs.test_pack }}" >> "$GITHUB_OUTPUT"
+          for v in "$TEST_PACK" "$TOPIC"; do
+            if [ -n "$v" ] && ! [[ "$v" =~ ^[0-9A-Za-z][0-9A-Za-z_-]*$ ]]; then
+              echo "::error::パック名・ネタのidに使えない文字があります（先頭は英数字・英数字とハイフン・下線だけ）"; exit 1
+            fi
+          done
+          if [ -n "$TEST_PACK" ]; then
+            echo "pack=$TEST_PACK" >> "$GITHUB_OUTPUT"
             echo "test=true" >> "$GITHUB_OUTPUT"
-            echo "動作確認: ${{ inputs.test_pack }}（台帳は汚さない・コミットもしない）"
+            echo "動作確認: $TEST_PACK（台帳は汚さない・コミットもしない）"
           else
             d=$(TZ=Asia/Tokyo date +%Y-%m-%d)   # 金曜の日付をパック名に使う
             echo "pack=$d-weekly" >> "$GITHUB_OUTPUT"
@@ -80,14 +90,19 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # 2026-11-13 鍵を持つこの手順の中で Claude Code が自分を最新版へ更新しないように止める（ai-radio と同じ）
           DISABLE_AUTOUPDATER: "1"
+          TOPIC: ${{ inputs.topic }}
+          PACK: ${{ steps.name.outputs.pack }}
+          IS_TEST: ${{ steps.name.outputs.test }}
         run: |
           opt=""
-          [ -n "${{ inputs.topic }}" ] && opt="--topic ${{ inputs.topic }}"
-          [ "${{ steps.name.outputs.test }}" = "true" ] && opt="$opt --no-ledger"
-          python3 scripts/build_weekly.py "${{ steps.name.outputs.pack }}" $opt
+          [ -n "$TOPIC" ] && opt="--topic $TOPIC"
+          [ "$IS_TEST" = "true" ] && opt="$opt --no-ledger"
+          python3 scripts/build_weekly.py "$PACK" $opt
 
       - name: 出来たものをコミットする
         if: steps.guard.outputs.skip == 'false' && steps.name.outputs.test == 'false'
+        env:
+          PACK: ${{ steps.name.outputs.pack }}
         run: |
           git config user.name "unizom-insta bot"
           git config user.email "285088708+teruhikonomizu-ops@users.noreply.github.com"   # GitHub の匿名アドレス（2026-11-11）
@@ -95,7 +110,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "変更なし"
           else
-            git commit -m "今週の投稿パックを作った: ${{ steps.name.outputs.pack }}
+            git commit -m "今週の投稿パックを作った: $PACK
 
           自動生成。まだ投稿していない。のみさんの承認を待つ。"
             git push
@@ -103,9 +118,11 @@ jobs:
 
       - name: できたことを知らせる
         if: steps.guard.outputs.skip == 'false'
+        env:
+          PACK: ${{ steps.name.outputs.pack }}
         run: |
           echo "### 今週のインスタができました" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "パック: \`${{ steps.name.outputs.pack }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "パック: \`$PACK\`" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          cat "docs/media/${{ steps.name.outputs.pack }}/caption.txt" >> "$GITHUB_STEP_SUMMARY"
+          cat "docs/media/$PACK/caption.txt" >> "$GITHUB_STEP_SUMMARY"

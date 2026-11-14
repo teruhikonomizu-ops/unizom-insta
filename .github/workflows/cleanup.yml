@@ -35,10 +35,11 @@ jobs:
       - name: 片付け
         env:
           GH_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ inputs.dry_run }}   # 2026-11-14 命令文に直接埋め込まず環境変数で受け渡す
         run: |
           set -o pipefail   # tee を挟んでも本体の失敗を拾う
           opts=""
-          [ "${{ inputs.dry_run }}" = "true" ] && opts="--dry-run"
+          [ "$DRY_RUN" = "true" ] && opts="--dry-run"
           python3 scripts/cleanup_media.py $opts | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: コミット
