@@ -125,9 +125,16 @@ def start_deadline(pack, work, seconds=None):
 
 
 # ---------- Claude 呼び出し（道具を絞る） ----------
-def claude(prompt, work, tools="", allowed=None, model="opus", strict_mcp=True, timeout=3600, extra=None):
+# Higgsfield だけを読み込む設定（2026-11-16 修理）。~~strict_mcp=False（全部のMCPを読み込む）~~ は --tools "" だと
+# 全MCP（Adobe・Canva・tool4seller…）の道具の説明が最初から約60.5万トークン入り、11/15 の CLAUDE_CODE_AUTO_COMPACT_WINDOW=500000
+# を最初から超えて「Autocompact is thrashing」で止まった。Higgsfield だけなら約17万トークン（接続先は `claude mcp list` の値・認証は既存のまま）
+HF_MCP = '{"mcpServers":{"higgsfield":{"type":"http","url":"https://mcp.higgsfield.ai/mcp"}}}'
+
+
+def claude(prompt, work, tools="", allowed=None, model="opus", strict_mcp=True, timeout=3600, extra=None, mcp_config=None):
     cmd = [bw.claude_cmd(), "-p", "--model", model, "--tools", tools, "--permission-mode", "dontAsk", "--no-session-persistence"]
     if strict_mcp: cmd += ["--strict-mcp-config"]
+    if mcp_config: cmd += ["--mcp-config", mcp_config]
     if tools: cmd += ["--add-dir", str(work)]
     if allowed: cmd += ["--allowedTools", ",".join(allowed)]
     if extra: cmd += list(extra)
@@ -232,7 +239,7 @@ def hf_balance(work):
     prompt = ("mcp__higgsfield__balance を1回だけ呼び、返ってきた credits の数を {\"credits\": <数>} の JSON だけで出力してください。"
               "ほかの道具は使わないでください。")
     try:
-        out = claude(prompt, work, tools="", model="haiku", strict_mcp=False, timeout=300,
+        out = claude(prompt, work, tools="", model="haiku", mcp_config=HF_MCP, timeout=300,
                      allowed=["mcp__higgsfield__balance"], extra=["--output-format", "stream-json", "--verbose"])
         v = credits_from_stream(out)
         if v is None: log("Higgsfieldの残高: 道具の返事に credits が無かった")
@@ -292,7 +299,7 @@ def higgsfield(d, work, hf_from=None):
     log(f"Higgsfieldの残高（生成の前）: {before}")
     STAGE["hf"] = True
     try:
-        out = claude(prompt, work, tools="", model="sonnet", strict_mcp=False, timeout=2400,
+        out = claude(prompt, work, tools="", model="sonnet", mcp_config=HF_MCP, timeout=2400,
                      allowed=["mcp__higgsfield__generate_video", "mcp__higgsfield__generate_image", "mcp__higgsfield__jobs_wait"])
     finally:   # 生成係が失敗しても、使った分は確かめる
         after = hf_balance(work)
