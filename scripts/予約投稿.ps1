@@ -22,7 +22,7 @@ function Result($kind, $msg) {
 }
 function Report($first) {
   if ($DryRun) { return }
-  $body = "$first`r`n予約投稿（のみさんが10/12に承認済み）: $Note`r`n書いた時刻: $(& $now)（予約投稿.ps1）`r`n"
+  $body = "$first`r`n予約投稿（のみさんが事前にチャットで承認済み）: $Note`r`n書いた時刻: $(& $now)（予約投稿.ps1）`r`n"
   [System.IO.File]::WriteAllText($report, $body, $utf8)
 }
 
