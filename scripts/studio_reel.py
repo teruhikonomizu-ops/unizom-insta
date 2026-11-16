@@ -134,7 +134,9 @@ HF_MCP = '{"mcpServers":{"higgsfield":{"type":"http","url":"https://mcp.higgsfie
 def claude(prompt, work, tools="", allowed=None, model="opus", strict_mcp=True, timeout=3600, extra=None, mcp_config=None):
     cmd = [bw.claude_cmd(), "-p", "--model", model, "--tools", tools, "--permission-mode", "dontAsk", "--no-session-persistence"]
     if strict_mcp: cmd += ["--strict-mcp-config"]
-    if mcp_config: cmd += ["--mcp-config", mcp_config]
+    if mcp_config:   # 設定はファイルにして場所を渡す（claude が .cmd 版だと引用符が壊れるため・広告の見張りと同じ形）
+        cfg = Path(work) / "_mcp_config.json"; cfg.write_text(mcp_config, encoding="utf-8")
+        cmd += ["--mcp-config", str(cfg)]
     if tools: cmd += ["--add-dir", str(work)]
     if allowed: cmd += ["--allowedTools", ",".join(allowed)]
     if extra: cmd += list(extra)
