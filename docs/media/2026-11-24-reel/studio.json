@@ -1,0 +1,84 @@
+{
+ "topic_id": "sale-2026-11-24",
+ "style_plan": [
+  "hook=実写AI動画（夜の作業小屋の土間。雨だれの中で裸電球が灯り、無地の黒い長靴が浮かび上がる）＋大文字「ブラックフライデー」を叩きつけ、赤札「開催中」と終わる日時の札",
+  "until=赤い面で日付を19→25へ数え上げ → 暗いスタジオにパタパタ時計「1:59」 → 生成り紙のフラット図解の砂時計 → 霜の田んぼの実写（日時の札は同じ位置に残す） → 設計図の線画で「火曜の夜→0:00→1:59」の時間線と三日月 → 折りたたみ長靴の水はじき実写 → 赤い面にパタパタ時計",
+  "lineup=一語畳み掛け（rush：長靴・股下・腰丈・胸丈） → 設計図の方眼に商品写真4枚が2×2で落ちてくる → 暗いスタジオに実写の切り抜き（インソール真横）＋光の走り → 生成り紙に白フチカード（リュック） → クラフト紙にクレヨンの棚と商品カードが並ぶ",
+  "check=クラフト紙にクレヨン手描きの店先（赤いのれん） → 暗いスタジオに白フチカード＋虫眼鏡 → 生成り紙のチェック欄（対象の商品・価格に赤いチェック） → 渓流の実写に確認の札 → 赤い面に大きな「楽天だけ」 → 釣り現場の実写",
+  "end=雪の朝の田んぼの実写（coverImg）＋実物ロゴ・好評発売中・楽天で販売中・終わる日時のおさらい＋商品カード3枚＋実物のインソール（落ち着いて見せる）"
+ ],
+ "script": {
+  "speaker": 497929760,
+  "target_rate": 7.0,
+  "sentence_gap": 0.42,
+  "scenes": [
+   {
+    "id": "hook",
+    "show": "楽天ブラックフライデー、開催中です。",
+    "sentences": [
+     "楽天ブラックフライデー、開催中です。"
+    ],
+    "pad": 1.2,
+    "video": "hook"
+   },
+   {
+    "id": "until",
+    "show": "終わりは11月25日（水）午前1:59。火曜の夜、日付が変わった少しあとまで。",
+    "sentences": [
+     "終わりは、11月25日、午前1時59分。",
+     "火曜の夜、日付が変わった、少しあとまで。"
+    ],
+    "pad": 0.8
+   },
+   {
+    "id": "lineup",
+    "show": "長靴やウェーダー。専用インソール、防水リュックも楽天で販売しています。",
+    "sentences": [
+     "長靴や、ウェーダー。",
+     "専用インソール、防水リュックも、楽天で販売しています。"
+    ],
+    "pad": 0.8
+   },
+   {
+    "id": "check",
+    "show": "対象の商品や価格は、ストアのページでご確認ください。今回のセールは、楽天だけです。",
+    "sentences": [
+     "対象の商品や価格は、ストアのページで、ご確認ください。",
+     "今回のセールは、楽天だけです。"
+    ],
+    "pad": 0.8
+   },
+   {
+    "id": "end",
+    "show": "好評発売中です。プロフィールのリンクから、どうぞ。",
+    "sentences": [
+     "好評発売中です。",
+     "プロフィールのリンクから、どうぞ。"
+    ],
+    "pad": 2.2
+   }
+  ]
+ },
+ "assets": {
+  "logo": "cutout:unizom-logo",
+  "side": "cutout:insole-side",
+  "duo": "cutout:insole-duo-38",
+  "nw99": "stock:nw99-pair",
+  "nw99w": "stock:nw99-water",
+  "hipw": "stock:hipw-pair",
+  "hw94": "stock:hw94-front",
+  "chest": "stock:chest-front",
+  "chestf": "stock:chest-scene-fishing",
+  "bag": "stock:bag-hero",
+  "frost": "stock:tanbo-frost",
+  "gorge": "stock:keiryu-gorge-noon",
+  "snow": "stock:tanbo-snow-morning"
+ },
+ "higgsfield": {
+  "video": {
+   "key": "hook",
+   "prompt": "[SCENE] Late autumn night at a small Japanese farm shed. Low close shot of the shed's open doorway and damp concrete floor (doma). A pair of plain matte black knee-high rubber boots stands on the wet concrete, a little dried mud on the soles. Rain drips steadily from the corrugated tin eaves in the foreground. In the first second the scene is almost dark, then a single bare incandescent bulb hanging above flickers on and warm light spreads over the boots and the wet floor.\n[CAMERA] Slow steady push-in at boot height, 35mm lens, aperture f/5.6 so the doorway and floor stay readable, focus on the boots. Real-time speed, no slow-motion, no shake.\n[LIGHTING] Mostly deep darkness, then one warm 2700K bulb from above, hard pool of light, specular glints on wet rubber and puddles, cool faint blue night ambience outside the doorway.\n[MATERIALS & TEXTURE] Glossy wet black rubber, rough grey concrete with puddles, falling water droplets, weathered wooden door frame, rusty tin eaves.\n[COLOR PALETTE] Near-black shadows, warm amber bulb light, cool deep blue night. High natural contrast, the upper half of the frame stays dark.\n[AUDIO] Natural sounds only: rain dripping on tin and concrete, the click of a light switch, faint night insects. No music, no voice.\n[AVOID] Logos, text, letters or brand marks on the boots or anywhere, people's faces, extra boots, deformed or morphing boots, product packaging, camera shake, fisheye distortion, heavy bokeh, overexposure."
+  },
+  "images": []
+ }
+}
