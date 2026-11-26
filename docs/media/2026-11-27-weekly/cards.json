@@ -13,7 +13,8 @@
       "subs": [
         "11/27(金)〜12/7(月)"
       ],
-      "line_size": 116
+      "line_size": 116,
+      "style": "overlay"
     },
     {
       "src": "raw/2.jpg",
@@ -65,7 +66,8 @@
         "Amazonで販売しています",
         "対象と価格は商品ページで確認"
       ],
-      "line_size": 96
+      "line_size": 96,
+      "style": "panel"
     },
     {
       "src": "raw/6.jpg",
