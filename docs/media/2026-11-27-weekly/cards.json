@@ -1,0 +1,85 @@
+{
+  "format": "feed",
+  "cards": [
+    {
+      "src": "raw/1.jpg",
+      "out": "1.jpg",
+      "kicker": "開催中",
+      "lines": [
+        "Amazon",
+        "ブラック",
+        "フライデー"
+      ],
+      "subs": [
+        "11/27(金)〜12/7(月)"
+      ],
+      "line_size": 116
+    },
+    {
+      "src": "raw/2.jpg",
+      "out": "2.jpg",
+      "kicker": "unizom",
+      "lines": [
+        "ウェーダー"
+      ],
+      "subs": [
+        "Amazonで販売しています",
+        "対象と価格は商品ページで確認"
+      ],
+      "line_size": 116
+    },
+    {
+      "src": "raw/3.jpg",
+      "out": "3.jpg",
+      "kicker": "unizom",
+      "lines": [
+        "長靴"
+      ],
+      "subs": [
+        "Amazonで販売しています",
+        "対象と価格は商品ページで確認"
+      ],
+      "line_size": 116
+    },
+    {
+      "src": "raw/4.jpg",
+      "out": "4.jpg",
+      "kicker": "unizom",
+      "lines": [
+        "防水リュック"
+      ],
+      "subs": [
+        "Amazonで販売しています",
+        "対象と価格は商品ページで確認"
+      ],
+      "line_size": 116
+    },
+    {
+      "src": "raw/5.jpg",
+      "out": "5.jpg",
+      "kicker": "unizom",
+      "lines": [
+        "専用インソール"
+      ],
+      "subs": [
+        "Amazonで販売しています",
+        "対象と価格は商品ページで確認"
+      ],
+      "line_size": 96
+    },
+    {
+      "src": "raw/6.jpg",
+      "out": "6.jpg",
+      "kicker": "期間",
+      "lines": [
+        "12/7(月)まで"
+      ],
+      "subs": [
+        "Amazonのブラックフライデー",
+        "プロフィールのリンクから"
+      ],
+      "line_size": 96,
+      "style": "overlay"
+    }
+  ]
+}
